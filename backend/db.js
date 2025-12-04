@@ -2,9 +2,10 @@ const { Pool } = require('pg');
 require('dotenv').config();
 
 // Configuration du pool de connexions PostgreSQL
+// Utilise le pooler Supabase qui supporte IPv4
 const pool = new Pool({
-  host: 'db.frcrzayagaxnqrglyocg.supabase.co',
-  user: 'postgres',
+  host: 'aws-1-eu-central-1.pooler.supabase.com',
+  user: 'postgres.frcrzayagaxnqrglyocg',
   password: '#prnCQiUr7fL*MN',
   database: 'postgres',
   port: 5432,
