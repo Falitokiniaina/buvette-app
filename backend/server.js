@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const path = require('path');
 const db = require('./db');
 require('dotenv').config();
 
@@ -19,6 +20,9 @@ app.use(cors({
 app.use(morgan('dev')); // Logs
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Servir les fichiers statiques du frontend
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 // ============================================
 // ROUTE: Health Check
@@ -536,8 +540,9 @@ app.put('/api/parametrage/:cle', async (req, res) => {
 // ============================================
 // GESTION DES ERREURS
 // ============================================
-app.use((req, res) => {
-  res.status(404).json({ error: 'Route non trouvée' });
+// 404 uniquement pour les routes API
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'Route API non trouvée' });
 });
 
 app.use((err, req, res, next) => {
