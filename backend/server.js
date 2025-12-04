@@ -12,7 +12,20 @@ const PORT = process.env.PORT || 3000;
 // ============================================
 // MIDDLEWARES
 // ============================================
-app.use(helmet()); // Sécurité
+// Configuration Helmet avec CSP assouplie pour permettre les onclick
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdnjs.cloudflare.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      connectSrc: ["'self'"],
+    },
+  },
+}));
+
 app.use(cors({
   origin: process.env.FRONTEND_URL || '*',
   credentials: true
