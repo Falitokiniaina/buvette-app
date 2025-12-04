@@ -2,9 +2,14 @@ const { Pool } = require('pg');
 require('dotenv').config();
 
 // Configuration du pool de connexions PostgreSQL
+// Utilisation de paramètres séparés pour forcer IPv4
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:#prnCQiUr7fL*MN@db.frcrzayagaxnqrglyocg.supabase.co:5432/postgres?sslmode=require',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  host: 'db.frcrzayagaxnqrglyocg.supabase.co',
+  user: 'postgres',
+  password: '#prnCQiUr7fL*MN',
+  database: 'postgres',
+  port: 5432,
+  ssl: { rejectUnauthorized: false },
   max: 20, // Nombre maximum de clients dans le pool
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
