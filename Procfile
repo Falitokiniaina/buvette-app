@@ -1,1 +1,1 @@
-web: node backend/server.js
+web: node --dns-result-order=ipv4first backend/server.js
