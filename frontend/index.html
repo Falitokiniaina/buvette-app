@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commander - Buvette Gospel</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🎵 Buvette Concert Gospel</h1>
+            <p class="subtitle">Passez votre commande</p>
+        </header>
+
+        <!-- Étape 1: Nom de commande -->
+        <div id="step1" class="step active">
+            <div class="card">
+                <h2>👤 Créer votre commande</h2>
+                <p class="info">Choisissez un nom unique pour votre commande (ex: votre prénom)</p>
+                <input type="text" id="nomCommande" placeholder="Nom de la commande" class="input-large" onkeypress="if(event.key === 'Enter') creerCommande()">
+                <button onclick="creerCommande()" class="btn btn-primary btn-large">Commencer ma commande</button>
+            </div>
+        </div>
+
+        <!-- Étape 2: Sélection des articles -->
+        <div id="step2" class="step">
+            <div class="card">
+                <h2>🍽️ Sélectionnez vos articles</h2>
+                <p class="commande-nom">Commande: <strong id="displayNom"></strong></p>
+                
+                <div id="articlesList" class="articles-grid"></div>
+                
+                <div class="panier-section">
+                    <h3>🛒 Votre panier</h3>
+                    <div id="panier" class="panier-items"></div>
+                    <div class="total-section">
+                        <p class="total">Total: <strong id="totalPrix">0.00€</strong></p>
+                    </div>
+                    <button onclick="allerALaCaisse()" class="btn btn-success btn-large">💳 Aller à la caisse</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Étape 3: Attente paiement -->
+        <div id="step3" class="step">
+            <div class="card text-center">
+                <h2>💳 En attente de paiement</h2>
+                <p class="commande-nom">Commande: <strong id="displayNom3"></strong></p>
+                <div class="loading-spinner"></div>
+                <p class="info-large">Présentez-vous à la caisse avec votre nom de commande</p>
+                <p class="info">La page se mettra à jour automatiquement</p>
+                <div id="statutPaiement" class="status-box"></div>
+            </div>
+        </div>
+
+        <!-- Étape 4: Commande payée -->
+        <div id="step4" class="step">
+            <div class="card text-center success-card">
+                <div class="success-icon">✓</div>
+                <h2>Commande payée !</h2>
+                <p class="commande-nom">Commande: <strong id="displayNom4"></strong></p>
+                <p class="info-large">Présentez-vous au préparateur pour récupérer votre commande</p>
+                <button onclick="nouvelleCommande()" class="btn btn-primary">Nouvelle commande</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/client.js"></script>
+</body>
+</html>

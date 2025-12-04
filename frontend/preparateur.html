@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Préparateur - Buvette Gospel</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/auth.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header preparateur-header">
+            <h1>👨‍🍳 Préparation des commandes</h1>
+            <div class="nav-links">
+                <a href="index.html">Client</a>
+                <a href="caisse.html">Caisse</a>
+                <a href="preparateur.html" class="active">Préparateur</a>
+                <a href="#" onclick="verifierAccesAdmin(); return false;">Admin</a>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Statistiques -->
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <div class="stat-value" id="statsPayees">0</div>
+                    <div class="stat-label">À préparer</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statsLivrees">0</div>
+                    <div class="stat-label">Livrées aujourd'hui</div>
+                </div>
+            </div>
+
+            <!-- Recherche -->
+            <div class="card">
+                <h2>🔍 Rechercher une commande</h2>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Nom de la commande" class="input-large">
+                    <button onclick="rechercherCommande()" class="btn btn-primary">Rechercher</button>
+                </div>
+                <div id="searchResult" class="search-result"></div>
+            </div>
+
+            <!-- Liste des commandes payées -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>🍽️ Commandes payées - À préparer</h2>
+                    <div class="auto-refresh">
+                        <span>⟳ Actualisation auto: <strong id="countdown">10</strong>s</span>
+                    </div>
+                </div>
+                <div id="commandesListe" class="commandes-liste"></div>
+            </div>
+
+            <!-- Historique -->
+            <div class="card collapsed">
+                <div class="card-header clickable" onclick="toggleHistorique()">
+                    <h2>📋 Historique des livraisons</h2>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div id="historique" class="historique-content" style="display: none;">
+                    <div class="search-box">
+                        <input type="text" id="searchHistorique" placeholder="Rechercher dans l'historique" class="input-large">
+                        <button onclick="rechercherHistorique()" class="btn btn-secondary">Rechercher</button>
+                    </div>
+                    <div id="historiqueListe"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmation de livraison -->
+    <div id="modalLivraison" class="modal">
+        <div class="modal-content">
+            <h2>📦 Confirmer la livraison</h2>
+            <div id="modalBody"></div>
+            <div class="modal-actions">
+                <button onclick="fermerModal()" class="btn btn-secondary">Annuler</button>
+                <button onclick="confirmerLivraison()" class="btn btn-success">✓ Marquer comme livrée</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/preparateur.js"></script>
+</body>
+</html>

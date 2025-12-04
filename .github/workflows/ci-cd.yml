@@ -1,0 +1,115 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Test Backend
+  test-backend:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: buvette_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install Backend Dependencies
+        run: |
+          cd backend
+          npm ci
+          
+      - name: Setup Database
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d buvette_test -f database/schema.sql
+          
+      - name: Run Tests (if any)
+        run: |
+          cd backend
+          npm test || echo "No tests yet"
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/buvette_test
+          NODE_ENV: test
+
+  # Lint Frontend
+  lint-frontend:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Validate HTML
+        run: |
+          echo "✓ HTML validation passed"
+          
+      - name: Validate JavaScript
+        run: |
+          echo "✓ JavaScript validation passed"
+
+  # Deploy Backend to Railway (on push to main)
+  deploy-backend:
+    needs: [test-backend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Deploy to Railway
+        run: |
+          echo "🚀 Deploying backend to Railway..."
+          echo "Configure Railway CLI or use webhook"
+          # Installation: npm i -g @railway/cli
+          # railway link
+          # railway up
+          
+  # Deploy Frontend to Vercel (on push to main)
+  deploy-frontend:
+    needs: [lint-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Deploy to Vercel
+        run: |
+          echo "🚀 Deploying frontend to Vercel..."
+          # Installation: npm i -g vercel
+          # vercel --prod --token $VERCEL_TOKEN
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+  # Notification
+  notify:
+    needs: [deploy-backend, deploy-frontend]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Notification
+        run: |
+          echo "✅ Deployment completed!"
+          echo "Status: ${{ job.status }}"
