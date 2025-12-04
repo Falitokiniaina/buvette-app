@@ -157,7 +157,7 @@ web: node backend/server.js
 **4. nixpacks.toml**
 ```toml
 [phases.setup]
-nixPkgs = ["nodejs_20", "npm"]
+nixPkgs = ["nodejs_20"]  # npm est inclus dans nodejs_20
 
 [phases.install]
 cmds = ["npm install --production"]
@@ -165,6 +165,8 @@ cmds = ["npm install --production"]
 [start]
 cmd = "node backend/server.js"
 ```
+
+**Note importante :** Ne PAS mettre `npm` séparément dans `nixPkgs` - il est déjà inclus dans `nodejs_20` !
 
 **5. .node-version**
 ```
