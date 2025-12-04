@@ -9,11 +9,92 @@ let articleSelectionne = null;
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
+    chargerStatutVente();
     chargerStatistiques();
     chargerStock();
     chargerStatsArticles();
     chargerHistorique();
 });
+
+// ============================================
+// GESTION DE LA VENTE (OUVERTURE/FERMETURE)
+// ============================================
+
+async function chargerStatutVente() {
+    try {
+        const response = await apiGet('/parametrage/vente_ouverte');
+        const venteOuverte = response.valeur_boolean;
+        
+        // Mettre à jour l'affichage
+        const statusElement = document.getElementById('venteStatus');
+        const btnElement = document.getElementById('btnToggleVente');
+        
+        if (venteOuverte) {
+            statusElement.textContent = '✅ La vente est actuellement ouverte';
+            btnElement.textContent = '🔒 Fermer la vente';
+            btnElement.style.background = '#ef4444';
+            btnElement.style.color = 'white';
+        } else {
+            statusElement.textContent = '🔒 La vente est actuellement fermée';
+            btnElement.textContent = '✅ Ouvrir la vente';
+            btnElement.style.background = '#10b981';
+            btnElement.style.color = 'white';
+        }
+    } catch (error) {
+        console.error('Erreur chargement statut vente:', error);
+        showError('Erreur lors du chargement du statut de vente');
+    }
+}
+
+async function toggleVente() {
+    const btnElement = document.getElementById('btnToggleVente');
+    const originalText = btnElement.textContent;
+    
+    try {
+        // Désactiver le bouton
+        btnElement.disabled = true;
+        btnElement.textContent = '⏳ Traitement...';
+        
+        // Récupérer l'état actuel
+        const response = await apiGet('/parametrage/vente_ouverte');
+        const venteOuverte = response.valeur_boolean;
+        
+        // Inverser l'état
+        const nouvelEtat = !venteOuverte;
+        
+        // Demander confirmation
+        const action = nouvelEtat ? 'ouvrir' : 'fermer';
+        const message = `Êtes-vous sûr de vouloir ${action} la vente ?\n\n${
+            nouvelEtat 
+                ? '✅ Les clients pourront passer des commandes.' 
+                : '🔒 Les clients ne pourront plus passer de commandes.'
+        }`;
+        
+        if (!confirm(message)) {
+            btnElement.textContent = originalText;
+            btnElement.disabled = false;
+            return;
+        }
+        
+        // Mettre à jour
+        await apiPut('/parametrage/vente_ouverte', {
+            valeur_boolean: nouvelEtat
+        });
+        
+        // Recharger l'affichage
+        await chargerStatutVente();
+        
+        // Message de confirmation
+        showSuccess(`Vente ${nouvelEtat ? 'ouverte' : 'fermée'} avec succès !`);
+        
+    } catch (error) {
+        console.error('Erreur toggle vente:', error);
+        showError('Erreur lors de la modification du statut de vente');
+        btnElement.textContent = originalText;
+    } finally {
+        btnElement.disabled = false;
+    }
+}
 
 // ============================================
 // CHARGER LES STATISTIQUES GLOBALES

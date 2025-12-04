@@ -44,7 +44,7 @@ app.get('/api/health', async (req, res) => {
 app.get('/api/articles', async (req, res) => {
   try {
     const result = await db.query(
-      'SELECT * FROM articles WHERE actif = TRUE ORDER BY nom ASC'
+      'SELECT * FROM articles WHERE actif = TRUE AND stock_disponible > 0 ORDER BY nom ASC'
     );
     res.json(result.rows);
   } catch (error) {
@@ -467,6 +467,69 @@ app.get('/api/historique/commandes', async (req, res) => {
   } catch (error) {
     console.error('Erreur historique commandes:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération de l\'historique' });
+  }
+});
+
+// ============================================
+// ROUTES: PARAMETRAGE
+// ============================================
+
+// GET: Récupérer un paramètre par clé
+app.get('/api/parametrage/:cle', async (req, res) => {
+  try {
+    const { cle } = req.params;
+    const result = await db.query(
+      'SELECT * FROM parametrage WHERE cle = $1',
+      [cle]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Paramètre non trouvé' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Erreur GET parametrage:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération du paramètre' });
+  }
+});
+
+// GET: Récupérer tous les paramètres
+app.get('/api/parametrage', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM parametrage ORDER BY cle ASC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Erreur GET parametrage:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des paramètres' });
+  }
+});
+
+// PUT: Mettre à jour un paramètre
+app.put('/api/parametrage/:cle', async (req, res) => {
+  try {
+    const { cle } = req.params;
+    const { valeur_texte, valeur_nombre, valeur_boolean } = req.body;
+    
+    // Vérifier que le paramètre existe
+    const check = await db.query('SELECT * FROM parametrage WHERE cle = $1', [cle]);
+    if (check.rows.length === 0) {
+      return res.status(404).json({ error: 'Paramètre non trouvé' });
+    }
+    
+    // Mettre à jour
+    const result = await db.query(
+      `UPDATE parametrage 
+       SET valeur_texte = $2, valeur_nombre = $3, valeur_boolean = $4, updated_at = CURRENT_TIMESTAMP
+       WHERE cle = $1
+       RETURNING *`,
+      [cle, valeur_texte || null, valeur_nombre || null, valeur_boolean]
+    );
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Erreur PUT parametrage:', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour du paramètre' });
   }
 });
 

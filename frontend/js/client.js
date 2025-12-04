@@ -12,8 +12,47 @@ let intervalPaiement = null;
 // ============================================
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Vérifier si la vente est ouverte
+    const venteOuverte = await verifierVenteOuverte();
+    if (!venteOuverte) {
+        afficherVenteFermee();
+        return; // Stopper le chargement
+    }
+    
     await chargerArticles();
 });
+
+// Vérifier si la vente est ouverte
+async function verifierVenteOuverte() {
+    try {
+        const response = await apiGet('/parametrage/vente_ouverte');
+        return response.valeur_boolean === true;
+    } catch (error) {
+        console.error('Erreur vérification vente:', error);
+        // En cas d'erreur, on considère que la vente est ouverte (comportement par défaut)
+        return true;
+    }
+}
+
+// Afficher message vente fermée
+function afficherVenteFermee() {
+    const mainContent = document.querySelector('.main-content') || document.body;
+    mainContent.innerHTML = `
+        <div class="card" style="text-align: center; max-width: 600px; margin: 100px auto; padding: var(--spacing-xl);">
+            <div style="font-size: 5rem; margin-bottom: var(--spacing-lg);">🔒</div>
+            <h2 style="color: var(--primary); margin-bottom: var(--spacing-md);">La vente est actuellement fermée</h2>
+            <p style="color: var(--gray-600); font-size: 1.1rem; line-height: 1.6;">
+                Les commandes seront bientôt disponibles.<br>
+                Merci de votre patience !
+            </p>
+            <div style="margin-top: var(--spacing-xl); padding-top: var(--spacing-lg); border-top: 1px solid var(--gray-300);">
+                <p style="color: var(--gray-500); font-size: 0.9rem;">
+                    Vous serez informé dès l'ouverture de la vente
+                </p>
+            </div>
+        </div>
+    `;
+}
 
 // ============================================
 // ÉTAPE 1: CRÉER UNE COMMANDE
@@ -161,7 +200,13 @@ function afficherArticles() {
     const container = document.getElementById('articlesList');
     
     if (!articles.length) {
-        container.innerHTML = '<p class="info">Aucun article disponible</p>';
+        container.innerHTML = `
+            <div class="card" style="text-align: center; padding: var(--spacing-xl);">
+                <div style="font-size: 4rem; margin-bottom: var(--spacing-md);">📦</div>
+                <h3 style="color: var(--gray-700); margin-bottom: var(--spacing-sm);">Aucun article en vente actuellement</h3>
+                <p class="info" style="color: var(--gray-600);">Les articles seront bientôt disponibles. Merci de votre patience !</p>
+            </div>
+        `;
         return;
     }
     

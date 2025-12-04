@@ -3,7 +3,7 @@ require('dotenv').config();
 
 // Configuration du pool de connexions PostgreSQL
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:#prnCQiUr7fL*MN@db.frcrzayagaxnqrglyocg.supabase.co:5432/postgres?sslmode=require',
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   max: 20, // Nombre maximum de clients dans le pool
   idleTimeoutMillis: 30000,

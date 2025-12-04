@@ -52,6 +52,19 @@
         </header>
 
         <div class="main-content">
+            <!-- Contrôle de la vente -->
+            <div class="card" style="background: linear-gradient(135deg, var(--primary-light), var(--primary)); color: white; margin-bottom: var(--spacing-lg);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h2 style="color: white; margin-bottom: var(--spacing-xs);">🛒 Contrôle de la Vente</h2>
+                        <p id="venteStatus" style="font-size: 1.1rem; opacity: 0.9;">Chargement...</p>
+                    </div>
+                    <button id="btnToggleVente" onclick="toggleVente()" class="btn-primary" style="background: white; color: var(--primary); font-size: 1.1rem; padding: var(--spacing-md) var(--spacing-lg); min-width: 200px;">
+                        Chargement...
+                    </button>
+                </div>
+            </div>
+
             <!-- Statistiques globales -->
             <div class="card">
                 <h2>📊 Vue d'ensemble</h2>

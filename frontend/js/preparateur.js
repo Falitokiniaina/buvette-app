@@ -101,11 +101,8 @@ function afficherCommandesListe(commandes) {
                 </div>
                 <span class="commande-total">${formatPrice(commande.montant_total)}</span>
             </div>
-            <button onclick="afficherDetail('${commande.nom_commande}')" class="btn btn-secondary btn-sm mt-1">
-                📋 Voir le détail
-            </button>
             <button onclick="ouvrirLivraison('${commande.nom_commande}')" class="btn btn-success mt-1">
-                ✓ Marquer comme livrée
+                📋 Voir le détail - Marquer comme livrée
             </button>
         </div>
     `).join('');
@@ -172,7 +169,7 @@ function afficherResultatRecherche(commande) {
                 `).join('')}
             </div>
             <button onclick="ouvrirLivraison('${commande.nom_commande}')" class="btn btn-success btn-large mt-1">
-                ✓ Marquer comme livrée
+                📋 Voir le détail - Marquer comme livrée
             </button>
         </div>
     `;
@@ -185,26 +182,53 @@ function afficherResultatRecherche(commande) {
 async function afficherDetail(nomCommande) {
     try {
         const commande = await apiGet(`/commandes/nom/${encodeURIComponent(nomCommande)}`);
+        const container = document.getElementById('detailsCommande');
         
-        const detail = `
-            <div class="alert alert-info">
-                <h4>Détail de la commande: ${commande.nom_commande}</h4>
-                <div class="mt-1">
+        container.style.display = 'block';
+        container.innerHTML = `
+            <div class="card" style="background: var(--info-light); border-left: 4px solid var(--info);">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-md);">
+                    <h3 style="color: var(--info); margin: 0;">📋 Détail de la commande: ${commande.nom_commande}</h3>
+                    <button onclick="fermerDetail()" class="btn btn-sm" style="background: transparent; color: var(--gray-600); font-size: 1.5rem; padding: 0; width: 30px; height: 30px;">×</button>
+                </div>
+                <div style="background: white; padding: var(--spacing-md); border-radius: var(--radius); margin-bottom: var(--spacing-md);">
+                    <p style="color: var(--gray-600); margin-bottom: var(--spacing-md);">
+                        <strong>Statut:</strong> ${commande.statut === 'payee' ? '✅ Payée' : commande.statut}<br>
+                        <strong>Payée le:</strong> ${formatDate(commande.date_paiement)}
+                    </p>
+                    <hr style="margin: var(--spacing-md) 0; border: none; border-top: 1px solid var(--gray-300);">
+                    <h4 style="margin-bottom: var(--spacing-sm);">Articles commandés:</h4>
                     ${commande.items.map(item => `
-                        <div style="padding: 0.5rem 0; border-bottom: 1px solid var(--gray-300);">
-                            <strong>${item.article_nom}</strong><br>
-                            Quantité: ${item.quantite} x ${formatPrice(item.prix_unitaire)} = ${formatPrice(item.sous_total)}
+                        <div style="padding: var(--spacing-sm); border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between;">
+                            <div>
+                                <strong style="color: var(--primary);">${item.article_nom}</strong><br>
+                                <span style="color: var(--gray-600); font-size: 0.9rem;">
+                                    ${item.quantite} × ${formatPrice(item.prix_unitaire)}
+                                </span>
+                            </div>
+                            <div style="text-align: right;">
+                                <strong>${formatPrice(item.sous_total)}</strong>
+                            </div>
                         </div>
                     `).join('')}
                 </div>
-                <p class="mt-1" style="font-size: 1.2rem;"><strong>Total: ${formatPrice(commande.montant_total)}</strong></p>
+                <div style="text-align: right; font-size: 1.3rem; padding: var(--spacing-md); background: white; border-radius: var(--radius);">
+                    <strong>Total: ${formatPrice(commande.montant_total)}</strong>
+                </div>
             </div>
         `;
         
-        showAlert(detail, 'info');
+        // Scroll vers les détails
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
         showError('Erreur lors du chargement du détail');
     }
+}
+
+function fermerDetail() {
+    const container = document.getElementById('detailsCommande');
+    container.style.display = 'none';
+    container.innerHTML = '';
 }
 
 // ============================================

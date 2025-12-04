@@ -175,6 +175,35 @@ CREATE TRIGGER trigger_decrementer_stock
     FOR EACH ROW EXECUTE FUNCTION decrementer_stock_paiement();
 
 -- ============================================
+-- TABLE: PARAMETRAGE
+-- ============================================
+CREATE TABLE IF NOT EXISTS parametrage (
+    id SERIAL PRIMARY KEY,
+    cle VARCHAR(100) UNIQUE NOT NULL,
+    valeur_texte TEXT,
+    valeur_nombre DECIMAL(10, 2),
+    valeur_boolean BOOLEAN,
+    description TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index pour recherche rapide par clé
+CREATE INDEX IF NOT EXISTS idx_parametrage_cle ON parametrage(cle);
+
+-- Trigger pour mettre à jour updated_at
+CREATE TRIGGER update_parametrage_timestamp
+    BEFORE UPDATE ON parametrage
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- DONNÉES INITIALES: Paramétrage
+-- ============================================
+INSERT INTO parametrage (cle, valeur_boolean, description) VALUES
+    ('vente_ouverte', TRUE, 'Indique si la vente est ouverte aux clients')
+ON CONFLICT (cle) DO NOTHING;
+
+-- ============================================
 -- DONNÉES INITIALES: Articles du menu
 -- ============================================
 INSERT INTO articles (nom, description, prix, stock_disponible, actif, image_url) VALUES
@@ -182,11 +211,8 @@ INSERT INTO articles (nom, description, prix, stock_disponible, actif, image_url
     ('Box Sucré', 'Délices sucrés et gourmands', 5.00, 50, TRUE, 'https://images.unsplash.com/photo-1586985289688-ca3cf47d3e6e?w=400&h=300&fit=crop'),
     ('Bagnat Catless', 'Sandwich niçois revisité', 8.00, 30, TRUE, 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=400&h=300&fit=crop'),
     ('Hot Dog + Frites', 'Hot dog gourmand avec frites croustillantes', 8.00, 40, TRUE, 'https://images.unsplash.com/photo-1612392062798-2907b67694fd?w=400&h=300&fit=crop'),
-    ('Vary Anana', 'Riz sauté + saosisy gasy + boulettes maison', 8.00, 35, TRUE, 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400&h=300&fit=crop'),
-    ('Coca Cola', 'Boisson gazeuse', 1.00, 100, TRUE, 'https://images.unsplash.com/photo-1554866585-cd94860890b7?w=400&h=300&fit=crop'),
-    ('Orangina', 'Boisson gazeuse à l''orange', 1.00, 100, TRUE, 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400&h=300&fit=crop'),
-    ('Ice Tea', 'Thé glacé', 1.00, 100, TRUE, 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&h=300&fit=crop'),
-    ('Eau', 'Eau minérale', 1.00, 150, TRUE, 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=400&h=300&fit=crop');
+    ('Vary Anana', 'Vary @anana + saosisy gasy + boulettes maison', 8.00, 35, TRUE, 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400&h=300&fit=crop'),
+    ('Boisson', 'Cannette ou bouteille', 1.00, 150, TRUE, 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=400&h=300&fit=crop');
 
 -- ============================================
 -- VUES UTILES POUR LES RAPPORTS
