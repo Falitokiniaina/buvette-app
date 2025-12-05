@@ -39,8 +39,8 @@ CREATE INDEX idx_articles_nom ON articles(nom);
 CREATE TABLE commandes (
     id SERIAL PRIMARY KEY,
     nom_commande VARCHAR(50) NOT NULL UNIQUE,
-    statut VARCHAR(20) NOT NULL DEFAULT 'en_attente' 
-        CHECK (statut IN ('en_attente', 'payee', 'livree', 'annulee')),
+    statut VARCHAR(25) NOT NULL DEFAULT 'en_attente' 
+        CHECK (statut IN ('en_attente', 'payee', 'livree', 'livree_partiellement', 'annulee')),
     montant_total DECIMAL(10, 2) DEFAULT 0 CHECK (montant_total >= 0),
     montant_paye DECIMAL(10, 2) DEFAULT 0 CHECK (montant_paye >= 0),
     montant_cb DECIMAL(10, 2) DEFAULT 0 CHECK (montant_cb >= 0),
@@ -69,6 +69,7 @@ CREATE TABLE commande_items (
     quantite INTEGER NOT NULL CHECK (quantite > 0),
     prix_unitaire DECIMAL(10, 2) NOT NULL CHECK (prix_unitaire >= 0),
     sous_total DECIMAL(10, 2) GENERATED ALWAYS AS (quantite * prix_unitaire) STORED,
+    est_livre BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(commande_id, article_id)
 );
@@ -201,6 +202,12 @@ CREATE TRIGGER update_parametrage_timestamp
 -- ============================================
 INSERT INTO parametrage (cle, valeur_boolean, description) VALUES
     ('vente_ouverte', TRUE, 'Indique si la vente est ouverte aux clients')
+ON CONFLICT (cle) DO NOTHING;
+
+INSERT INTO parametrage (cle, valeur_texte, description) VALUES
+    ('mot_de_passe_admin', 'FPMA123456', 'Mot de passe pour accéder à la page admin'),
+    ('mot_de_passe_caisse', 'FPMA123', 'Mot de passe pour accéder à la page caisse'),
+    ('mot_de_passe_preparateur', 'FPMA1234', 'Mot de passe pour accéder à la page préparateur')
 ON CONFLICT (cle) DO NOTHING;
 
 -- ============================================

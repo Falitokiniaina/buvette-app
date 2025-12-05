@@ -148,8 +148,11 @@ app.post('/api/commandes', async (req, res) => {
     
     await client.query('BEGIN');
     
-    // Vérifier que le nom est unique
-    const existing = await client.query('SELECT id FROM commandes WHERE nom_commande = $1', [nom_commande]);
+    // Vérifier que le nom est unique (case insensitive)
+    const existing = await client.query(
+      'SELECT id FROM commandes WHERE LOWER(nom_commande) = LOWER($1)', 
+      [nom_commande]
+    );
     if (existing.rows.length > 0) {
       await client.query('ROLLBACK');
       return res.status(409).json({ error: 'Ce nom de commande existe déjà. Choisissez un autre nom.' });
@@ -260,7 +263,11 @@ app.put('/api/commandes/:id/items', async (req, res) => {
 app.get('/api/commandes/nom/:nom_commande', async (req, res) => {
   try {
     const { nom_commande } = req.params;
-    const result = await db.query('SELECT * FROM commandes WHERE nom_commande = $1', [nom_commande]);
+    // Recherche case insensitive
+    const result = await db.query(
+      'SELECT * FROM commandes WHERE LOWER(nom_commande) = LOWER($1)', 
+      [nom_commande]
+    );
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Commande non trouvée' });
@@ -272,6 +279,7 @@ app.get('/api/commandes/nom/:nom_commande', async (req, res) => {
       FROM commande_items ci
       JOIN articles a ON ci.article_id = a.id
       WHERE ci.commande_id = $1
+      ORDER BY ci.id
     `, [result.rows[0].id]);
     
     res.json({
@@ -288,16 +296,28 @@ app.get('/api/commandes/nom/:nom_commande', async (req, res) => {
 app.get('/api/commandes/statut/:statut', async (req, res) => {
   try {
     const { statut } = req.params;
+    
+    // Si on demande 'payee', inclure aussi 'livree_partiellement'
+    let whereClause;
+    let params;
+    if (statut === 'payee') {
+      whereClause = "c.statut IN ($1, $2)";
+      params = ['payee', 'livree_partiellement'];
+    } else {
+      whereClause = "c.statut = $1";
+      params = [statut];
+    }
+    
     const result = await db.query(`
       SELECT c.*, 
              COUNT(ci.id) as nombre_items,
              SUM(ci.quantite) as quantite_totale
       FROM commandes c
       LEFT JOIN commande_items ci ON c.id = ci.commande_id
-      WHERE c.statut = $1
+      WHERE ${whereClause}
       GROUP BY c.id
       ORDER BY c.created_at DESC
-    `, [statut]);
+    `, params);
     
     res.json(result.rows);
   } catch (error) {
@@ -400,29 +420,85 @@ app.put('/api/commandes/:id/payer', async (req, res) => {
 
 // PUT: Livrer une commande (PREPARATEUR)
 app.put('/api/commandes/:id/livrer', async (req, res) => {
+  const client = await db.pool.connect();
   try {
-    const { id } = req.params;
+    await client.query('BEGIN');
     
-    // Vérifier que la commande est payée
-    const check = await db.query('SELECT * FROM commandes WHERE id = $1', [id]);
+    const { id } = req.params;
+    const { article_ids = [] } = req.body; // IDs des articles à livrer
+    
+    // Vérifier que la commande existe
+    const check = await client.query('SELECT * FROM commandes WHERE id = $1', [id]);
     if (check.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Commande non trouvée' });
     }
     
-    if (check.rows[0].statut !== 'payee') {
+    const commande = check.rows[0];
+    
+    // Vérifier que la commande est payée ou partiellement livrée
+    if (!['payee', 'livree_partiellement'].includes(commande.statut)) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Cette commande n\'est pas payée' });
     }
     
-    // Mettre à jour le statut
-    const result = await db.query(
-      'UPDATE commandes SET statut = $1, date_livraison = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
-      ['livree', id]
+    // Récupérer tous les items de la commande
+    const items = await client.query(
+      'SELECT * FROM commande_items WHERE commande_id = $1',
+      [id]
     );
     
+    // Si aucun article spécifié, livrer tous les articles non livrés
+    const idsALivrer = article_ids.length > 0 ? article_ids : items.rows.filter(i => !i.est_livre).map(i => i.id);
+    
+    // Marquer les articles comme livrés
+    if (idsALivrer.length > 0) {
+      await client.query(
+        'UPDATE commande_items SET est_livre = TRUE WHERE id = ANY($1::int[])',
+        [idsALivrer]
+      );
+    }
+    
+    // Vérifier le statut de la commande après livraison
+    const itemsApres = await client.query(
+      'SELECT * FROM commande_items WHERE commande_id = $1',
+      [id]
+    );
+    
+    const tousLivres = itemsApres.rows.every(item => item.est_livre);
+    const auMoinsUnLivre = itemsApres.rows.some(item => item.est_livre);
+    
+    let nouveauStatut;
+    let dateLivraison = null;
+    
+    if (tousLivres) {
+      nouveauStatut = 'livree';
+      dateLivraison = 'CURRENT_TIMESTAMP';
+    } else if (auMoinsUnLivre) {
+      nouveauStatut = 'livree_partiellement';
+    } else {
+      nouveauStatut = 'payee';
+    }
+    
+    // Mettre à jour le statut de la commande
+    const result = await client.query(
+      `UPDATE commandes 
+       SET statut = $1, 
+           date_livraison = ${dateLivraison || 'date_livraison'}
+       WHERE id = $2 
+       RETURNING *`,
+      [nouveauStatut, id]
+    );
+    
+    await client.query('COMMIT');
     res.json(result.rows[0]);
+    
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Erreur livraison commande:', error);
     res.status(500).json({ error: 'Erreur lors de la livraison de la commande' });
+  } finally {
+    client.release();
   }
 });
 

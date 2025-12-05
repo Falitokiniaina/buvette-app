@@ -10,7 +10,7 @@ const pool = new Pool({
   database: 'postgres',
   port: 5432,
   ssl: { rejectUnauthorized: false },
-  max: 20,
+  max: 500, // Nombre maximum de clients dans le pool
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
 });
