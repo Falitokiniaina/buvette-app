@@ -61,19 +61,41 @@ app.get('/api/health', async (req, res) => {
 // GET: Liste tous les articles actifs
 app.get('/api/articles', async (req, res) => {
   try {
-    // Nettoyer les réservations expirées d'abord
-    await db.query('SELECT nettoyer_reservations_expirees()');
+    // Nettoyer les réservations expirées si la fonction existe
+    try {
+      await db.query('SELECT nettoyer_reservations_expirees()');
+    } catch (err) {
+      // Fonction pas encore créée, ignorer
+    }
     
-    // Utiliser la vue avec stock réel (stock - réservations)
-    const result = await db.query(`
-      SELECT 
-        id, nom, description, prix, stock_disponible,
-        stock_reel_disponible,
-        image_data, image_type, actif, created_at, updated_at
-      FROM v_articles_stock_reel 
-      WHERE actif = TRUE AND stock_reel_disponible > 0 
-      ORDER BY nom ASC
-    `);
+    // Essayer d'utiliser la vue avec stock réel, sinon fallback sur table normale
+    let result;
+    try {
+      result = await db.query(`
+        SELECT 
+          a.id, a.nom, a.description, a.prix, 
+          a.stock_disponible,
+          sd.stock_reel_disponible,
+          a.image_data, a.image_type, a.actif, a.created_at, a.updated_at
+        FROM articles a
+        LEFT JOIN v_stock_disponible sd ON a.id = sd.id
+        WHERE a.actif = TRUE
+        ORDER BY a.nom ASC
+      `);
+    } catch (err) {
+      // Vue pas encore créée, utiliser version simple
+      result = await db.query(`
+        SELECT 
+          id, nom, description, prix, 
+          stock_disponible,
+          stock_disponible as stock_reel_disponible,
+          image_data, image_type, actif, created_at, updated_at
+        FROM articles
+        WHERE actif = TRUE
+        ORDER BY nom ASC
+      `);
+    }
+    
     res.json(result.rows);
   } catch (error) {
     console.error('Erreur GET articles:', error);
@@ -86,15 +108,30 @@ app.get('/api/articles/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Utiliser la vue avec stock réel
-    const result = await db.query(`
-      SELECT 
-        id, nom, description, prix, stock_disponible,
-        stock_reel_disponible,
-        image_data, image_type, actif, created_at, updated_at
-      FROM v_articles_stock_reel 
-      WHERE id = $1
-    `, [id]);
+    // Essayer d'utiliser la vue avec stock réel, sinon fallback
+    let result;
+    try {
+      result = await db.query(`
+        SELECT 
+          a.id, a.nom, a.description, a.prix, 
+          a.stock_disponible,
+          sd.stock_reel_disponible,
+          a.image_data, a.image_type, a.actif, a.created_at, a.updated_at
+        FROM articles a
+        LEFT JOIN v_stock_disponible sd ON a.id = sd.id
+        WHERE a.id = $1
+      `, [id]);
+    } catch (err) {
+      // Vue pas encore créée, utiliser version simple
+      result = await db.query(`
+        SELECT 
+          id, nom, description, prix, stock_disponible,
+          stock_disponible as stock_reel_disponible,
+          image_data, image_type, actif, created_at, updated_at
+        FROM articles
+        WHERE id = $1
+      `, [id]);
+    }
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Article non trouvé' });
