@@ -210,26 +210,33 @@ function afficherArticles() {
         return;
     }
     
-    container.innerHTML = articles.map(article => `
-        <div class="article-card" id="article-${article.id}">
-            ${article.image_url ? `
-                <div class="article-image">
-                    <img src="${article.image_url}" alt="${article.nom}" onerror="this.style.display='none'">
-                </div>
-            ` : ''}
-            <div class="article-content">
-                <h3>${article.nom}</h3>
-                <p class="article-description">${article.description || ''}</p>
-                <p class="article-prix">${formatPrice(article.prix)}</p>
-                <p class="article-stock">Stock: ${article.stock_disponible} disponible(s)</p>
-                <div class="quantite-selector">
-                    <button onclick="modifierQuantite(${article.id}, -1)">-</button>
-                    <input type="number" id="qty-${article.id}" value="0" min="0" max="${article.stock_disponible}" readonly>
-                    <button onclick="modifierQuantite(${article.id}, 1)">+</button>
+    container.innerHTML = articles.map(article => {
+        // Utiliser stock réel (stock - réservations)
+        const stockReel = article.stock_reel_disponible !== undefined 
+            ? article.stock_reel_disponible 
+            : article.stock_disponible;
+        
+        return `
+            <div class="article-card" id="article-${article.id}">
+                ${article.image_url ? `
+                    <div class="article-image">
+                        <img src="${article.image_url}" alt="${article.nom}" onerror="this.style.display='none'">
+                    </div>
+                ` : ''}
+                <div class="article-content">
+                    <h3>${article.nom}</h3>
+                    <p class="article-description">${article.description || ''}</p>
+                    <p class="article-prix">${formatPrice(article.prix)}</p>
+                    <p class="article-stock">Stock: ${stockReel} disponible(s)</p>
+                    <div class="quantite-selector">
+                        <button onclick="modifierQuantite(${article.id}, -1)">-</button>
+                        <input type="number" id="qty-${article.id}" value="0" min="0" max="${stockReel}" readonly>
+                        <button onclick="modifierQuantite(${article.id}, 1)">+</button>
+                    </div>
                 </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
     
     // Restaurer les quantités du panier
     panier.forEach(item => {
@@ -246,10 +253,18 @@ function modifierQuantite(articleId, delta) {
     
     let nouvelleQte = parseInt(input.value) + delta;
     
+    // Utiliser stock réel (stock - réservations)
+    const stockReel = article.stock_reel_disponible !== undefined 
+        ? article.stock_reel_disponible 
+        : article.stock_disponible;
+    
     // Limites
     if (nouvelleQte < 0) nouvelleQte = 0;
-    if (nouvelleQte > article.stock_disponible) {
-        showError(`Stock maximum atteint (${article.stock_disponible})`);
+    
+    // ✅ AUTORISER '-' MÊME SI quantité > stock (requis par l'utilisateur)
+    // Bloquer seulement '+' si on dépasse le stock
+    if (delta > 0 && nouvelleQte > stockReel) {
+        showError(`Stock maximum atteint (${stockReel})`);
         return;
     }
     

@@ -299,6 +299,63 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ============================================
+-- TABLE: reservation_temporaire
+-- Réservations temporaires pour éviter surventes
+-- ============================================
+CREATE TABLE IF NOT EXISTS reservation_temporaire (
+    id SERIAL PRIMARY KEY,
+    commande_id INTEGER REFERENCES commandes(id) ON DELETE CASCADE,
+    article_id INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+    quantite INTEGER NOT NULL CHECK (quantite > 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL '15 minutes')
+);
+
+-- Index pour recherche rapide
+CREATE INDEX IF NOT EXISTS idx_reservation_commande ON reservation_temporaire(commande_id);
+CREATE INDEX IF NOT EXISTS idx_reservation_article ON reservation_temporaire(article_id);
+CREATE INDEX IF NOT EXISTS idx_reservation_expires ON reservation_temporaire(expires_at);
+
+-- Fonction: Nettoyer les réservations expirées
+CREATE OR REPLACE FUNCTION nettoyer_reservations_expirees()
+RETURNS void AS $$
+BEGIN
+    DELETE FROM reservation_temporaire WHERE expires_at < CURRENT_TIMESTAMP;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Fonction: Calculer stock disponible réel (stock - réservations)
+CREATE OR REPLACE FUNCTION get_stock_disponible_reel(p_article_id INTEGER)
+RETURNS INTEGER AS $$
+DECLARE
+    stock_base INTEGER;
+    reservations INTEGER;
+BEGIN
+    -- Stock de base
+    SELECT stock_disponible INTO stock_base 
+    FROM articles 
+    WHERE id = p_article_id;
+    
+    -- Total des réservations
+    SELECT COALESCE(SUM(quantite), 0) INTO reservations
+    FROM reservation_temporaire
+    WHERE article_id = p_article_id 
+    AND expires_at > CURRENT_TIMESTAMP;
+    
+    RETURN GREATEST(stock_base - reservations, 0);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Vue: Articles avec stock réel disponible
+CREATE OR REPLACE VIEW v_articles_stock_reel AS
+SELECT 
+    a.*,
+    COALESCE(a.stock_disponible - SUM(r.quantite), a.stock_disponible) as stock_reel_disponible
+FROM articles a
+LEFT JOIN reservation_temporaire r ON a.id = r.article_id AND r.expires_at > CURRENT_TIMESTAMP
+GROUP BY a.id;
+
+-- ============================================
 -- GRANTS (Permissions)
 -- À adapter selon vos besoins de sécurité
 -- ============================================

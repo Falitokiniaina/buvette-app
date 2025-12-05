@@ -136,6 +136,28 @@ async function ouvrirPaiement(nomCommande) {
         
         commandeSelectionnee = commande;
         
+        // 🔒 CRÉER LA RÉSERVATION TEMPORAIRE
+        try {
+            const items = commande.items.map(item => ({
+                article_id: item.article_id,
+                quantite: item.quantite
+            }));
+            
+            await apiPost(`/reservations/commande/${encodeURIComponent(commande.nom_commande)}`, {
+                items: items
+            });
+            
+            console.log('✅ Réservation temporaire créée pour commande', commande.nom_commande);
+        } catch (reservationError) {
+            // Si la réservation échoue (stock insuffisant), afficher l'erreur
+            if (reservationError.error && reservationError.error.includes('Stock insuffisant')) {
+                showError('⚠️ Stock insuffisant pour cette commande. Articles déjà réservés par d\'autres commandes.');
+                await chargerCommandes(); // Rafraîchir la liste
+                return;
+            }
+            console.warn('Erreur réservation (non bloquant):', reservationError);
+        }
+        
         const modalBody = document.getElementById('modalBody');
         modalBody.innerHTML = `
             <div class="commande-info">
@@ -343,10 +365,37 @@ async function confirmerPaiement() {
     }
 }
 
-function fermerModal() {
+async function fermerModal() {
+    // 🔓 SUPPRIMER LA RÉSERVATION TEMPORAIRE (annulation)
+    if (commandeSelectionnee) {
+        try {
+            await apiDelete(`/reservations/commande/${encodeURIComponent(commandeSelectionnee.nom_commande)}`);
+            console.log('✅ Réservation temporaire supprimée (annulation)');
+        } catch (error) {
+            console.warn('Erreur suppression réservation:', error);
+        }
+    }
+    
     closeModal('modalPaiement');
     commandeSelectionnee = null;
 }
+
+// ============================================
+// NETTOYAGE RÉSERVATION SI PAGE QUITTÉE
+// ============================================
+
+window.addEventListener('beforeunload', async () => {
+    // Si une commande est sélectionnée, supprimer sa réservation
+    if (commandeSelectionnee) {
+        try {
+            // Utiliser sendBeacon pour garantie d'envoi même si page ferme
+            const url = `${API_URL}/reservations/commande/${encodeURIComponent(commandeSelectionnee.nom_commande)}`;
+            navigator.sendBeacon(url, JSON.stringify({ _method: 'DELETE' }));
+        } catch (error) {
+            console.warn('Erreur nettoyage réservation:', error);
+        }
+    }
+});
 
 // ============================================
 // ACTUALISATION AUTO (optionnel)
