@@ -5,6 +5,32 @@
 let articleSelectionne = null;
 
 // ============================================
+// FONCTIONS HELPER - STATUTS ET BADGES
+// ============================================
+
+function afficherStatut(statut) {
+    const statuts = {
+        'en_attente': 'En attente',
+        'payee': 'Payée',
+        'livree_partiellement': 'Livrée partiellement',
+        'livree': 'Livrée',
+        'annulee': 'Annulée'
+    };
+    return statuts[statut] || statut;
+}
+
+function getBadgeClass(statut) {
+    const classes = {
+        'en_attente': 'badge-warning',
+        'payee': 'badge-success',
+        'livree_partiellement': 'badge-info',
+        'livree': 'badge-success',
+        'annulee': 'badge-danger'
+    };
+    return classes[statut] || '';
+}
+
+// ============================================
 // INITIALISATION
 // ============================================
 
@@ -106,6 +132,7 @@ async function chargerStatistiques() {
         
         document.getElementById('statsAttente').textContent = stats.commandes_attente || 0;
         document.getElementById('statsPayees').textContent = stats.commandes_payees || 0;
+        document.getElementById('statsPartielles').textContent = stats.commandes_partielles || 0;
         document.getElementById('statsLivrees').textContent = stats.commandes_livrees || 0;
         document.getElementById('statsCA').textContent = formatPrice(stats.chiffre_affaires_total || 0);
     } catch (error) {
@@ -289,7 +316,7 @@ function afficherHistorique(commandes) {
     const tbody = document.getElementById('historiqueTable');
     
     if (!commandes || commandes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Aucune vente</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">Aucune vente</td></tr>';
         return;
     }
     
@@ -299,11 +326,12 @@ function afficherHistorique(commandes) {
     tbody.innerHTML = commandesLimitees.map(commande => `
         <tr>
             <td><strong>${commande.nom_commande}</strong></td>
+            <td><span class="badge ${getBadgeClass(commande.statut)}">${afficherStatut(commande.statut)}</span></td>
             <td>${commande.nombre_articles || '-'}</td>
             <td>${commande.quantite_totale || '-'}</td>
             <td>${formatPrice(commande.montant_total)}</td>
             <td>${formatDate(commande.date_paiement)}</td>
-            <td>${formatDate(commande.date_livraison)}</td>
+            <td>${commande.date_livraison ? formatDate(commande.date_livraison) : '-'}</td>
         </tr>
     `).join('');
 }

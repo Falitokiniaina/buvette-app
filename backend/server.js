@@ -525,9 +525,10 @@ app.get('/api/stats/overview', async (req, res) => {
       SELECT 
         (SELECT COUNT(*) FROM commandes WHERE statut = 'en_attente') as commandes_attente,
         (SELECT COUNT(*) FROM commandes WHERE statut = 'payee') as commandes_payees,
+        (SELECT COUNT(*) FROM commandes WHERE statut = 'livree_partiellement') as commandes_partielles,
         (SELECT COUNT(*) FROM commandes WHERE statut = 'livree') as commandes_livrees,
-        (SELECT COALESCE(SUM(montant_total), 0) FROM commandes WHERE statut IN ('payee', 'livree')) as chiffre_affaires_total,
-        (SELECT COALESCE(SUM(montant_total), 0) FROM commandes WHERE statut = 'payee') as en_cours_preparation
+        (SELECT COALESCE(SUM(montant_total), 0) FROM commandes WHERE statut IN ('payee', 'livree_partiellement', 'livree')) as chiffre_affaires_total,
+        (SELECT COALESCE(SUM(montant_total), 0) FROM commandes WHERE statut IN ('payee', 'livree_partiellement')) as en_cours_preparation
     `);
     
     res.json(stats.rows[0]);
@@ -553,8 +554,13 @@ app.get('/api/historique/commandes', async (req, res) => {
   try {
     const result = await db.query(`
       SELECT * FROM v_commandes_details 
-      WHERE statut = 'livree' 
-      ORDER BY date_livraison DESC
+      WHERE statut IN ('payee', 'livree_partiellement', 'livree', 'annulee')
+      ORDER BY 
+        CASE 
+          WHEN date_livraison IS NOT NULL THEN date_livraison
+          WHEN date_paiement IS NOT NULL THEN date_paiement
+          ELSE created_at
+        END DESC
       LIMIT 100
     `);
     res.json(result.rows);
