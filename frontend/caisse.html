@@ -5,7 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Caisse - Buvette Gospel</title>
     <link rel="stylesheet" href="css/style.css">
+    <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
+    <script>
+        // 🔐 Vérifier l'accès au chargement
+        window.addEventListener('DOMContentLoaded', async () => {
+            const hasAccess = await verifierAccesCaisse();
+            if (!hasAccess) {
+                document.body.innerHTML = '<div style="text-align:center;padding:50px;"><h1>Accès refusé</h1><p>Redirection...</p></div>';
+            }
+        });
+    </script>
 </head>
 <body>
     <div class="container">

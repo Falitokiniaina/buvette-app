@@ -5,34 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Administration - Buvette Gospel</title>
     <link rel="stylesheet" href="css/style.css">
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
     <script>
-        // 🔐 Protection par mot de passe
-        const ADMIN_PASSWORD = 'FPMA123456';
-        
-        function verifierAccesAdmin() {
-            // Vérifier si déjà authentifié dans cette session
-            if (sessionStorage.getItem('admin_auth') === 'ok') {
-                return true;
-            }
-            
-            // Demander le mot de passe
-            const password = prompt('🔐 Mot de passe administrateur requis:');
-            
-            if (password === ADMIN_PASSWORD) {
-                sessionStorage.setItem('admin_auth', 'ok');
-                return true;
-            } else if (password !== null) {
-                alert('❌ Mot de passe incorrect');
-            }
-            
-            // Rediriger vers la page d'accueil si échec
-            window.location.href = 'index.html';
-            return false;
-        }
-        
         // Vérifier l'accès au chargement de la page
-        window.addEventListener('DOMContentLoaded', () => {
-            if (!verifierAccesAdmin()) {
+        window.addEventListener('DOMContentLoaded', async () => {
+            const hasAccess = await verifierAccesAdmin();
+            if (!hasAccess) {
                 document.body.innerHTML = '<div style="text-align:center;padding:50px;"><h1>Accès refusé</h1><p>Redirection...</p></div>';
             }
         });

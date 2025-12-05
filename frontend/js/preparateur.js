@@ -93,6 +93,7 @@ function afficherCommandesListe(commandes) {
             <div class="commande-header">
                 <div>
                     <span class="commande-nom-display">${commande.nom_commande}</span>
+                    <span class="badge ${getBadgeClass(commande.statut)}">${afficherStatut(commande.statut)}</span>
                     <p class="info">
                         ${commande.nombre_items} article(s) - 
                         ${commande.quantite_totale} unité(s)<br>
@@ -136,12 +137,15 @@ async function rechercherCommande() {
 function afficherResultatRecherche(commande) {
     const container = document.getElementById('searchResult');
     
-    if (commande.statut !== 'payee') {
+    // Accepter payee ET livree_partiellement
+    if (!['payee', 'livree_partiellement'].includes(commande.statut)) {
         let message = '';
         if (commande.statut === 'en_attente') {
             message = 'Cette commande n\'a pas encore été payée';
         } else if (commande.statut === 'livree') {
-            message = 'Cette commande a déjà été livrée';
+            message = 'Cette commande a déjà été entièrement livrée';
+        } else if (commande.statut === 'annulee') {
+            message = 'Cette commande a été annulée';
         }
         
         container.innerHTML = `
@@ -157,6 +161,7 @@ function afficherResultatRecherche(commande) {
             <div class="commande-header">
                 <div>
                     <span class="commande-nom-display">${commande.nom_commande}</span>
+                    <span class="badge ${getBadgeClass(commande.statut)}">${afficherStatut(commande.statut)}</span>
                     <p class="info">Payée le ${formatDate(commande.date_paiement)}</p>
                 </div>
                 <span class="commande-total">${formatPrice(commande.montant_total)}</span>
@@ -165,6 +170,7 @@ function afficherResultatRecherche(commande) {
                 ${commande.items.map(item => `
                     <div class="commande-item">
                         <span><strong>${item.article_nom}</strong> x ${item.quantite}</span>
+                        ${item.est_livre ? '<span style="color: #10b981; margin-left: 1rem;">✓ Livré</span>' : ''}
                     </div>
                 `).join('')}
             </div>
@@ -239,7 +245,8 @@ async function ouvrirLivraison(nomCommande) {
     try {
         const commande = await apiGet(`/commandes/nom/${encodeURIComponent(nomCommande)}`);
         
-        if (commande.statut !== 'payee') {
+        // Accepter payee ET livree_partiellement
+        if (!['payee', 'livree_partiellement'].includes(commande.statut)) {
             showError('Cette commande ne peut pas être livrée');
             return;
         }
@@ -247,29 +254,129 @@ async function ouvrirLivraison(nomCommande) {
         commandeSelectionnee = commande;
         
         const modalBody = document.getElementById('modalBody');
+        
+        // Vérifier s'il reste des articles non livrés
+        const articlesNonLivres = commande.items.filter(item => !item.est_livre);
+        const tousLivres = articlesNonLivres.length === 0;
+        
         modalBody.innerHTML = `
             <div class="commande-info">
                 <p><strong>Commande:</strong> ${commande.nom_commande}</p>
+                <p><strong>Statut:</strong> <span class="badge ${getBadgeClass(commande.statut)}">${afficherStatut(commande.statut)}</span></p>
                 <p><strong>Payée le:</strong> ${formatDate(commande.date_paiement)}</p>
             </div>
-            <div class="mt-2">
-                <h4>Articles à préparer:</h4>
-                ${commande.items.map(item => `
-                    <div class="commande-item" style="padding: 0.75rem; background: var(--gray-50); margin: 0.5rem 0; border-radius: var(--radius);">
-                        <strong style="font-size: 1.2rem;">${item.article_nom}</strong><br>
-                        <span style="font-size: 1.5rem; color: var(--primary);">Quantité: ${item.quantite}</span>
+            
+            ${tousLivres ? `
+                <div class="alert alert-success mt-2">
+                    ✅ Tous les articles ont déjà été livrés
+                </div>
+            ` : `
+                <div class="mt-2">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h4>Articles à préparer:</h4>
+                        <label style="cursor: pointer; font-weight: normal;">
+                            <input type="checkbox" id="toggleAll" onchange="toggleTousArticles()" ${articlesNonLivres.length > 0 ? 'checked' : ''}>
+                            <span style="margin-left: 0.5rem;">Tout cocher / Tout décocher</span>
+                        </label>
                     </div>
-                `).join('')}
-            </div>
-            <div class="alert alert-warning mt-2">
-                ⚠️ Confirmez que tous les articles ont été préparés et remis au client
-            </div>
+                    
+                    ${commande.items.map(item => `
+                        <div class="commande-item" style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: var(--gray-50); margin: 0.5rem 0; border-radius: var(--radius); ${item.est_livre ? 'opacity: 0.6;' : ''}">
+                            <input 
+                                type="checkbox" 
+                                class="checkbox-article" 
+                                data-item-id="${item.id}"
+                                ${item.est_livre ? 'checked disabled style="cursor: not-allowed;"' : 'checked'}
+                                onchange="verifierStatutCochage()"
+                            >
+                            <div style="flex: 1;">
+                                <strong style="font-size: 1.2rem;">${item.article_nom}</strong><br>
+                                <span style="font-size: 1.1rem; color: var(--primary);">Quantité: ${item.quantite}</span>
+                                ${item.est_livre ? '<span style="color: #10b981; margin-left: 1rem; font-weight: 600;">✓ Déjà livré</span>' : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div id="messageValidation" class="alert alert-warning mt-2">
+                    ⚠️ Confirmez que tous les articles ont été préparés et remis au client
+                </div>
+            `}
         `;
+        
+        // Vérifier le statut initial
+        if (!tousLivres) {
+            verifierStatutCochage();
+        }
         
         openModal('modalLivraison');
     } catch (error) {
         showError('Erreur lors du chargement de la commande');
     }
+}
+
+// Toggle tous les articles non livrés
+function toggleTousArticles() {
+    const toggleAll = document.getElementById('toggleAll');
+    const checkboxes = document.querySelectorAll('.checkbox-article:not([disabled])');
+    
+    checkboxes.forEach(cb => {
+        cb.checked = toggleAll.checked;
+    });
+    
+    verifierStatutCochage();
+}
+
+// Vérifier statut cochage et afficher/masquer message
+function verifierStatutCochage() {
+    const checkboxes = document.querySelectorAll('.checkbox-article');
+    const toutCoche = Array.from(checkboxes).every(cb => cb.checked);
+    
+    const message = document.getElementById('messageValidation');
+    const toggleAll = document.getElementById('toggleAll');
+    
+    if (message) {
+        if (toutCoche) {
+            message.style.display = 'block';
+            message.className = 'alert alert-warning mt-2';
+            message.textContent = '⚠️ Confirmez que tous les articles ont été préparés et remis au client';
+        } else {
+            message.style.display = 'block';
+            message.className = 'alert alert-info mt-2';
+            message.textContent = 'ℹ️ Livraison partielle : seuls les articles cochés seront marqués comme livrés';
+        }
+    }
+    
+    // Mettre à jour la case "Tout cocher"
+    if (toggleAll) {
+        const checkboxesNonDisabled = document.querySelectorAll('.checkbox-article:not([disabled])');
+        const toutCocheNonDisabled = Array.from(checkboxesNonDisabled).every(cb => cb.checked);
+        toggleAll.checked = toutCocheNonDisabled;
+    }
+}
+
+// Fonction helper pour afficher statut
+function afficherStatut(statut) {
+    const statuts = {
+        'en_attente': 'En attente',
+        'payee': 'Payée',
+        'livree_partiellement': 'Livrée partiellement',
+        'livree': 'Livrée',
+        'annulee': 'Annulée'
+    };
+    return statuts[statut] || statut;
+}
+
+// Fonction helper pour classe badge
+function getBadgeClass(statut) {
+    const classes = {
+        'en_attente': 'badge-warning',
+        'payee': 'badge-success',
+        'livree_partiellement': 'badge-info',
+        'livree': 'badge-success',
+        'annulee': 'badge-danger'
+    };
+    return classes[statut] || '';
 }
 
 // ============================================
@@ -280,10 +387,32 @@ async function confirmerLivraison() {
     if (!commandeSelectionnee) return;
     
     try {
-        const commande = await apiPut(`/commandes/${commandeSelectionnee.id}/livrer`);
+        // Récupérer les IDs des articles cochés NON DÉJÀ LIVRÉS
+        const checkboxes = document.querySelectorAll('.checkbox-article:checked:not([disabled])');
+        const articleIds = Array.from(checkboxes).map(cb => parseInt(cb.dataset.itemId));
+        
+        // Si aucun article coché, erreur
+        if (articleIds.length === 0) {
+            showError('Veuillez cocher au moins un article à livrer');
+            return;
+        }
+        
+        // Appel API avec les IDs
+        const commande = await apiPut(
+            `/commandes/${commandeSelectionnee.id}/livrer`,
+            { article_ids: articleIds }
+        );
         
         fermerModal();
-        showSuccess(`Commande "${commande.nom_commande}" marquée comme livrée`);
+        
+        // Message adapté selon le statut final
+        if (commande.statut === 'livree') {
+            showSuccess(`✅ Commande "${commande.nom_commande}" entièrement livrée`);
+        } else if (commande.statut === 'livree_partiellement') {
+            showSuccess(`📦 Commande "${commande.nom_commande}" partiellement livrée (${articleIds.length} article(s))`);
+        } else {
+            showSuccess(`Commande "${commande.nom_commande}" mise à jour`);
+        }
         
         // Recharger la liste
         setTimeout(() => {
