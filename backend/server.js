@@ -60,23 +60,35 @@ app.get('/api/health', async (req, res) => {
 
 // GET: Liste tous les articles actifs
 app.get('/api/articles', async (req, res) => {
+  console.log('=== GET /api/articles appelé ===');
   try {
-    // Version simple sans réservations (pour l'instant)
+    console.log('Exécution requête SQL...');
     const result = await db.query(`
       SELECT 
-        id, nom, description, prix, 
-        stock_disponible,
-        stock_disponible as stock_reel_disponible,
-        image_data, image_type, actif, created_at, updated_at
+        id, nom, description, prix, stock_disponible,
+        image_url, actif, created_at, updated_at
       FROM articles
       WHERE actif = TRUE
       ORDER BY nom ASC
     `);
     
-    res.json(result.rows);
+    console.log(`Articles trouvés: ${result.rows.length}`);
+    
+    // Ajouter stock_reel_disponible pour compatibilité frontend
+    const articlesAvecStockReel = result.rows.map(article => ({
+      ...article,
+      stock_reel_disponible: article.stock_disponible
+    }));
+    
+    console.log('Envoi réponse JSON...');
+    res.json(articlesAvecStockReel);
   } catch (error) {
-    console.error('Erreur GET articles:', error);
-    res.status(500).json({ error: 'Erreur lors de la récupération des articles' });
+    console.error('❌ Erreur GET articles:', error);
+    console.error('Détails erreur:', error.message);
+    res.status(500).json({ 
+      error: 'Erreur lors de la récupération des articles',
+      detail: error.message 
+    });
   }
 });
 
@@ -85,13 +97,10 @@ app.get('/api/articles/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Version simple sans réservations (pour l'instant)
     const result = await db.query(`
       SELECT 
-        id, nom, description, prix, 
-        stock_disponible,
-        stock_disponible as stock_reel_disponible,
-        image_data, image_type, actif, created_at, updated_at
+        id, nom, description, prix, stock_disponible,
+        image_url, actif, created_at, updated_at
       FROM articles
       WHERE id = $1
     `, [id]);
@@ -100,7 +109,13 @@ app.get('/api/articles/:id', async (req, res) => {
       return res.status(404).json({ error: 'Article non trouvé' });
     }
     
-    res.json(result.rows[0]);
+    // Ajouter stock_reel_disponible pour compatibilité
+    const article = {
+      ...result.rows[0],
+      stock_reel_disponible: result.rows[0].stock_disponible
+    };
+    
+    res.json(article);
   } catch (error) {
     console.error('Erreur GET article:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération de l\'article' });
