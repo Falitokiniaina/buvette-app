@@ -394,7 +394,7 @@ async function allerALaCaisse() {
             let message = '⚠️ Certains articles ne sont plus disponibles:\n\n';
             verification.details.forEach(detail => {
                 if (!detail.ok) {
-                    message += `• ${detail.nom}: demandé ${detail.demande}, disponible ${detail.disponible}\n`;
+                    message += `• ${detail.article_nom}: demandé ${detail.quantite_demandee}, disponible ${detail.stock_reel_disponible}\n`;
                 }
             });
             message += '\nVeuillez modifier votre commande.';

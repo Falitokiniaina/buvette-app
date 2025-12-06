@@ -167,7 +167,7 @@ async function ouvrirPaiement(nomCommande) {
                 let message = '⚠️ STOCK INSUFFISANT\n\nArticles non disponibles:\n\n';
                 verification.details.forEach(detail => {
                     if (!detail.ok) {
-                        message += `• ${detail.nom}: demandé ${detail.quantite}, disponible ${detail.disponible}\n`;
+                        message += `• ${detail.article_nom}: demandé ${detail.quantite_demandee}, disponible ${detail.stock_reel_disponible}\n`;
                     }
                 });
                 message += '\n❌ Encaissement impossible.\nLe client doit modifier sa commande.';
