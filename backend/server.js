@@ -370,6 +370,20 @@ app.post('/api/commandes', async (req, res) => {
       }
     }
     
+    // Calculer et mettre à jour le montant total
+    const montantResult = await client.query(`
+      SELECT COALESCE(SUM(quantite * prix_unitaire), 0) as total
+      FROM commande_items
+      WHERE commande_id = $1
+    `, [commande.id]);
+    
+    const montant_total = montantResult.rows[0].total;
+    
+    await client.query(
+      'UPDATE commandes SET montant_total = $1 WHERE id = $2',
+      [montant_total, commande.id]
+    );
+    
     // Récupérer la commande complète avec le total
     const finalResult = await client.query('SELECT * FROM commandes WHERE id = $1', [commande.id]);
     
@@ -429,6 +443,20 @@ app.put('/api/commandes/:id/items', async (req, res) => {
       }
     }
     
+    // Calculer et mettre à jour le montant total
+    const montantResult = await client.query(`
+      SELECT COALESCE(SUM(quantite * prix_unitaire), 0) as total
+      FROM commande_items
+      WHERE commande_id = $1
+    `, [id]);
+    
+    const montant_total = montantResult.rows[0].total;
+    
+    await client.query(
+      'UPDATE commandes SET montant_total = $1 WHERE id = $2',
+      [montant_total, id]
+    );
+    
     // Récupérer la commande mise à jour
     const finalResult = await client.query('SELECT * FROM commandes WHERE id = $1', [id]);
     
@@ -459,7 +487,10 @@ app.get('/api/commandes/nom/:nom_commande', async (req, res) => {
     
     // Récupérer les items de la commande
     const itemsResult = await db.query(`
-      SELECT ci.*, a.nom as article_nom
+      SELECT 
+        ci.*,
+        a.nom as article_nom,
+        (ci.quantite * ci.prix_unitaire) as sous_total
       FROM commande_items ci
       JOIN articles a ON ci.article_id = a.id
       WHERE ci.commande_id = $1
