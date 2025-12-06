@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function verifierVenteOuverte() {
     try {
         const response = await apiGet('/parametrage/vente_ouverte');
-        return response.valeur_boolean === true;
+        return response.valeur === 'true';  // Correction: convertir string en boolean
     } catch (error) {
         console.error('Erreur vérification vente:', error);
         // En cas d'erreur, on considère que la vente est ouverte (comportement par défaut)

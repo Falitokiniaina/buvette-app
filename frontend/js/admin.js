@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function chargerStatutVente() {
     try {
         const response = await apiGet('/parametrage/vente_ouverte');
-        const venteOuverte = response.valeur_boolean;
+        const venteOuverte = response.valeur === 'true';  // Correction: convertir string en boolean
         
         // Mettre à jour l'affichage
         const statusElement = document.getElementById('venteStatus');
@@ -83,7 +83,7 @@ async function toggleVente() {
         
         // Récupérer l'état actuel
         const response = await apiGet('/parametrage/vente_ouverte');
-        const venteOuverte = response.valeur_boolean;
+        const venteOuverte = response.valeur === 'true';  // Correction: convertir string en boolean
         
         // Inverser l'état
         const nouvelEtat = !venteOuverte;
@@ -104,7 +104,7 @@ async function toggleVente() {
         
         // Mettre à jour
         await apiPut('/parametrage/vente_ouverte', {
-            valeur_boolean: nouvelEtat
+            valeur: nouvelEtat ? 'true' : 'false'  // Correction: envoyer string au lieu de valeur_boolean
         });
         
         // Recharger l'affichage

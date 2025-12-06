@@ -25,7 +25,7 @@ async function verifierAccesPage(page, sessionKey, paramKey, message) {
     try {
         // Récupérer le mot de passe depuis l'API
         const response = await apiGet(`/parametrage/${paramKey}`);
-        const motDePasseCorrect = response.valeur_texte;
+        const motDePasseCorrect = response.valeur;  // Correction: valeur au lieu de valeur_texte
         
         // Demander le mot de passe
         const password = prompt(message);
