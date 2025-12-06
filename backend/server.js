@@ -58,33 +58,27 @@ app.get('/api/health', async (req, res) => {
 // ROUTES: ARTICLES
 // ============================================
 
-// GET: Liste tous les articles actifs
+// GET: Liste tous les articles actifs avec stock réel
 app.get('/api/articles', async (req, res) => {
-  console.log('=== GET /api/articles appelé ===');
   try {
-    console.log('Exécution requête SQL...');
+    // Nettoyer les réservations expirées d'abord
+    await db.query('SELECT nettoyer_reservations_expirees()');
+    
+    // Utiliser la vue avec stock réel (stock - réservations)
     const result = await db.query(`
       SELECT 
-        id, nom, description, prix, stock_disponible,
+        id, nom, description, prix,
+        stock_initial as stock_disponible,
+        stock_reel_disponible,
         image_url, actif, created_at, updated_at
-      FROM articles
+      FROM v_stock_disponible
       WHERE actif = TRUE
       ORDER BY nom ASC
     `);
     
-    console.log(`Articles trouvés: ${result.rows.length}`);
-    
-    // Ajouter stock_reel_disponible pour compatibilité frontend
-    const articlesAvecStockReel = result.rows.map(article => ({
-      ...article,
-      stock_reel_disponible: article.stock_disponible
-    }));
-    
-    console.log('Envoi réponse JSON...');
-    res.json(articlesAvecStockReel);
+    res.json(result.rows);
   } catch (error) {
-    console.error('❌ Erreur GET articles:', error);
-    console.error('Détails erreur:', error.message);
+    console.error('Erreur GET articles:', error);
     res.status(500).json({ 
       error: 'Erreur lors de la récupération des articles',
       detail: error.message 
@@ -166,41 +160,159 @@ app.put('/api/articles/:id/stock', async (req, res) => {
 });
 
 // ============================================
-// ROUTES: RÉSERVATIONS TEMPORAIRES
-// (Désactivées - nécessite migration v2.7)
+// ROUTES: RÉSERVATIONS TEMPORAIRES (v2.7)
 // ============================================
 
-// POST: Créer des réservations pour une commande
+// POST: Créer des réservations pour une commande (appelé lors de "Encaisser")
 app.post('/api/reservations/commande/:nom', async (req, res) => {
-  // Désactivé temporairement - retourne succès sans rien faire
-  console.log('Réservation demandée (désactivé):', req.params.nom);
-  res.json({ 
-    message: 'Réservation créée (mode désactivé)', 
-    nom_commande: req.params.nom,
-    nb_articles: req.body.items?.length || 0
-  });
+  const client = await db.pool.connect();
+  try {
+    const { nom } = req.params;
+    const { items } = req.body;
+    
+    if (!items || items.length === 0) {
+      return res.status(400).json({ error: 'items requis' });
+    }
+    
+    await client.query('BEGIN');
+    
+    // Nettoyer les réservations expirées
+    await client.query('SELECT nettoyer_reservations_expirees()');
+    
+    // Supprimer les anciennes réservations de cette commande (si ré-encaissement)
+    await client.query(
+      'DELETE FROM reservation_temporaire WHERE nom_commande = $1',
+      [nom]
+    );
+    
+    // Vérifier et créer les nouvelles réservations
+    const stocksInsuffisants = [];
+    
+    for (const item of items) {
+      const { article_id, quantite } = item;
+      
+      // Vérifier le stock réel disponible via la vue
+      const stockCheck = await client.query(`
+        SELECT stock_reel_disponible
+        FROM v_stock_disponible
+        WHERE id = $1
+      `, [article_id]);
+      
+      if (stockCheck.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: `Article ${article_id} non trouvé` });
+      }
+      
+      const stockReel = stockCheck.rows[0].stock_reel_disponible;
+      
+      if (stockReel < quantite) {
+        stocksInsuffisants.push({
+          article_id,
+          stock_disponible: stockReel,
+          quantite_demandee: quantite
+        });
+      }
+    }
+    
+    // Si stock insuffisant, annuler
+    if (stocksInsuffisants.length > 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ 
+        error: 'Stock insuffisant pour certains articles',
+        details: stocksInsuffisants
+      });
+    }
+    
+    // Créer les réservations
+    for (const item of items) {
+      const { article_id, quantite } = item;
+      
+      await client.query(
+        'INSERT INTO reservation_temporaire (nom_commande, article_id, quantite) VALUES ($1, $2, $3)',
+        [nom, article_id, quantite]
+      );
+    }
+    
+    await client.query('COMMIT');
+    res.json({ 
+      message: 'Réservations créées avec succès', 
+      nom_commande: nom,
+      nb_articles: items.length 
+    });
+    
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Erreur création réservations:', error);
+    res.status(500).json({ error: 'Erreur lors de la création des réservations' });
+  } finally {
+    client.release();
+  }
 });
 
-// DELETE: Supprimer les réservations d'une commande
+// DELETE: Supprimer les réservations d'une commande (appelé lors de "Annuler")
 app.delete('/api/reservations/commande/:nom', async (req, res) => {
-  // Désactivé temporairement - retourne succès sans rien faire
-  console.log('Suppression réservation (désactivé):', req.params.nom);
-  res.json({ 
-    message: 'Réservations supprimées (mode désactivé)',
-    nb_supprimes: 0
-  });
+  try {
+    const { nom } = req.params;
+    
+    const result = await db.query(
+      'SELECT supprimer_reservations($1) as nb_supprimes',
+      [nom]
+    );
+    
+    res.json({ 
+      message: 'Réservations supprimées',
+      nb_supprimes: result.rows[0].nb_supprimes
+    });
+  } catch (error) {
+    console.error('Erreur suppression réservations:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression des réservations' });
+  }
 });
 
-// GET: Voir toutes les réservations
+// GET: Voir toutes les réservations (pour debug/admin)
 app.get('/api/reservations', async (req, res) => {
-  // Retourne liste vide
-  res.json([]);
+  try {
+    // Nettoyer les réservations expirées
+    await db.query('SELECT nettoyer_reservations_expirees()');
+    
+    const result = await db.query(`
+      SELECT 
+        rt.*,
+        a.nom as article_nom,
+        a.stock_disponible,
+        EXTRACT(EPOCH FROM (NOW() - rt.created_at))/60 as age_minutes
+      FROM reservation_temporaire rt
+      JOIN articles a ON rt.article_id = a.id
+      ORDER BY rt.created_at DESC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Erreur GET réservations:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des réservations' });
+  }
 });
 
 // GET: Voir les réservations d'une commande spécifique
 app.get('/api/reservations/commande/:nom', async (req, res) => {
-  // Retourne liste vide
-  res.json([]);
+  try {
+    const { nom } = req.params;
+    
+    const result = await db.query(`
+      SELECT 
+        rt.*,
+        a.nom as article_nom,
+        a.prix
+      FROM reservation_temporaire rt
+      JOIN articles a ON rt.article_id = a.id
+      WHERE rt.nom_commande = $1
+      ORDER BY a.nom
+    `, [nom]);
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Erreur GET réservations commande:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des réservations' });
+  }
 });
 
 // ============================================
@@ -479,17 +591,12 @@ app.put('/api/commandes/:id/payer', async (req, res) => {
       ['payee', sommePaiements, montant_cb, montant_especes, montant_cheque, id]
     );
     
-    // Supprimer les réservations temporaires (paiement confirmé) - Si table existe
-    try {
-      const nomCommande = check.rows[0].nom_commande;
-      await client.query(
-        'DELETE FROM reservation_temporaire WHERE nom_commande = $1',
-        [nomCommande]
-      );
-    } catch (err) {
-      // Table pas encore créée, ignorer
-      console.log('Suppression réservations ignorée (table non créée)');
-    }
+    // Supprimer les réservations temporaires (paiement confirmé)
+    const nomCommande = check.rows[0].nom_commande;
+    await client.query(
+      'SELECT supprimer_reservations($1)',
+      [nomCommande]
+    );
     
     await client.query('COMMIT');
     res.json(result.rows[0]);
