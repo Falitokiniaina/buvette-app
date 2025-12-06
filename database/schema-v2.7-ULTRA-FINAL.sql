@@ -274,11 +274,21 @@ BEGIN
         a.nom,
         ci.quantite,
         a.stock_disponible,
-        v.stock_reel_disponible,
-        (v.stock_reel_disponible >= ci.quantite) as ok
+        -- Stock réel disponible + quantité déjà réservée par CETTE commande (si existe)
+        (v.stock_reel_disponible + COALESCE(rt.quantite_reservee_commande, 0)) as stock_reel_disponible,
+        ((v.stock_reel_disponible + COALESCE(rt.quantite_reservee_commande, 0)) >= ci.quantite) as ok
     FROM commande_items ci
     JOIN articles a ON ci.article_id = a.id
     JOIN v_stock_disponible v ON a.id = v.id
+    -- Récupérer la quantité déjà réservée par CETTE commande (pour chaque article)
+    LEFT JOIN (
+        SELECT 
+            rt.article_id,
+            rt.quantite as quantite_reservee_commande
+        FROM reservation_temporaire rt
+        JOIN commandes c ON rt.nom_commande = c.nom_commande
+        WHERE c.id = p_commande_id
+    ) rt ON ci.article_id = rt.article_id
     WHERE ci.commande_id = p_commande_id;
 END;
 $$ LANGUAGE plpgsql;

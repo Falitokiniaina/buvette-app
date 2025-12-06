@@ -143,7 +143,7 @@ app.put('/api/articles/:id/stock', async (req, res) => {
     // Enregistrer dans l'historique
     await client.query(
       `INSERT INTO historique_stock 
-       (article_id, mouvement_type, quantite_avant, quantite_apres, quantite_mouvement, commentaire) 
+       (article_id, type_mouvement, quantite_avant, quantite_apres, difference, commentaire) 
        VALUES ($1, 'correction', $2, $3, $4, $5)`,
       [id, stock_avant, stock_disponible, stock_disponible - stock_avant, commentaire || 'Correction manuelle']
     );
