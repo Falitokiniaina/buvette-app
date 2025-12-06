@@ -229,14 +229,14 @@ INSERT INTO utilisateurs (username, password_hash, role) VALUES
 -- FONCTIONS SQL
 -- ============================================
 
--- Fonction 1: Nettoyer les réservations expirées
+-- Fonction 1: Nettoyer les réservations expirées (15 minutes)
 CREATE OR REPLACE FUNCTION nettoyer_reservations_expirees()
 RETURNS INTEGER AS $$
 DECLARE
     nb_supprimes INTEGER;
 BEGIN
     DELETE FROM reservation_temporaire 
-    WHERE created_at < NOW() - INTERVAL '30 minutes';
+    WHERE created_at < NOW() - INTERVAL '15 minutes';
     
     GET DIAGNOSTICS nb_supprimes = ROW_COUNT;
     RETURN nb_supprimes;

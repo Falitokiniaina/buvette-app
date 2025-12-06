@@ -132,6 +132,32 @@ function closeModal(modalId) {
     document.getElementById(modalId)?.classList.remove('active');
 }
 
+// Afficher un message dans une modal avec bouton OK
+function showModalMessage(message, type = 'error') {
+    // Créer la modal si elle n'existe pas
+    let modal = document.getElementById('messageModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'messageModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-body">
+                    <p id="modalMessageText" style="font-size: 1.1rem; margin: 20px 0;"></p>
+                </div>
+                <div class="modal-footer" style="text-align: center;">
+                    <button onclick="closeModal('messageModal')" class="btn btn-primary" style="min-width: 100px;">OK</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    // Afficher le message
+    document.getElementById('modalMessageText').innerHTML = message;
+    openModal('messageModal');
+}
+
 // ============================================
 // GESTIONNAIRE D'ERREURS GLOBAL
 // ============================================

@@ -144,7 +144,7 @@ async function ouvrirPaiement(nomCommande) {
         
         commandeSelectionnee = commande;
         
-        // 🔒 CRÉER LA RÉSERVATION TEMPORAIRE
+        // 🔒 CRÉER LA RÉSERVATION TEMPORAIRE + VÉRIFIER STOCK
         try {
             const items = commande.items.map(item => ({
                 article_id: item.article_id,
@@ -156,14 +156,33 @@ async function ouvrirPaiement(nomCommande) {
             });
             
             console.log('✅ Réservation temporaire créée pour commande', commande.nom_commande);
-        } catch (reservationError) {
-            // Si la réservation échoue (stock insuffisant), afficher l'erreur
-            if (reservationError.error && reservationError.error.includes('Stock insuffisant')) {
-                showError('⚠️ Stock insuffisant pour cette commande. Articles déjà réservés par d\'autres commandes.');
-                await chargerCommandes(); // Rafraîchir la liste
+            
+            // Vérifier le stock disponible (avec réservations)
+            const verification = await apiPost(`/commandes/${commande.id}/verifier`);
+            
+            if (!verification.disponible) {
+                // ❌ Stock insuffisant - supprimer la réservation et bloquer
+                await apiDelete(`/reservations/commande/${encodeURIComponent(commande.nom_commande)}`);
+                
+                let message = '⚠️ STOCK INSUFFISANT\n\nArticles non disponibles:\n\n';
+                verification.details.forEach(detail => {
+                    if (!detail.ok) {
+                        message += `• ${detail.nom}: demandé ${detail.quantite}, disponible ${detail.disponible}\n`;
+                    }
+                });
+                message += '\n❌ Encaissement impossible.\nLe client doit modifier sa commande.';
+                
+                alert(message);
+                await chargerCommandesAttente(); // Rafraîchir la liste
                 return;
             }
-            console.warn('Erreur réservation (non bloquant):', reservationError);
+            
+        } catch (reservationError) {
+            // Si ANY erreur de réservation ou vérification → BLOQUER
+            commandeSelectionnee = null;
+            showError(reservationError.message || '⚠️ Impossible de réserver cette commande. Stock insuffisant.');
+            await chargerCommandesAttente(); // Rafraîchir la liste
+            return;
         }
         
         const modalBody = document.getElementById('modalBody');
@@ -331,26 +350,7 @@ async function confirmerPaiement() {
     }
     
     try {
-        // 🔍 VÉRIFIER LE STOCK AVANT DE PAYER
-        console.log('Vérification du stock avant paiement...');
-        const verification = await apiPost(`/commandes/${commandeSelectionnee.id}/verifier`);
-        
-        if (!verification.disponible) {
-            // ❌ Stock insuffisant
-            let message = '⚠️ STOCK INSUFFISANT\n\nArticles non disponibles:\n\n';
-            verification.details.forEach(detail => {
-                if (!detail.ok) {
-                    message += `• ${detail.nom}: demandé ${detail.quantite}, disponible ${detail.disponible}\n`;
-                }
-            });
-            message += '\n❌ Paiement impossible.\nLe client doit modifier sa commande.';
-            
-            alert(message);
-            fermerModal();
-            return;
-        }
-        
-        // ✅ Stock OK → Procéder au paiement
+        // ✅ Stock déjà vérifié dans ouvrirPaiement → Procéder au paiement
         const commande = await apiPut(`/commandes/${commandeSelectionnee.id}/payer`, {
             montant_paye: sommePaiements,
             montant_cb: montantCB,
