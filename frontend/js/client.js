@@ -450,12 +450,21 @@ function attendrePaiement() {
 }
 
 async function verifierStatutPaiement() {
+    if (!commandeEnCours || !commandeEnCours.nom_commande) {
+        console.error('Pas de commande en cours');
+        clearInterval(intervalPaiement);
+        return;
+    }
+    
     try {
         const commande = await apiGet(`/commandes/nom/${encodeURIComponent(commandeEnCours.nom_commande)}`);
+        
+        console.log('Statut commande:', commande.statut); // Debug
         
         const statusDiv = document.getElementById('statutPaiement');
         
         if (commande.statut === 'payee') {
+            console.log('✅ Commande payée, passage à step4');
             clearInterval(intervalPaiement);
             commandePayee();
         } else {
@@ -468,6 +477,7 @@ async function verifierStatutPaiement() {
         }
     } catch (error) {
         console.error('Erreur vérification statut:', error);
+        // Ne pas arrêter l'intervalle en cas d'erreur réseau temporaire
     }
 }
 
