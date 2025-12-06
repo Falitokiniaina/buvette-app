@@ -831,7 +831,7 @@ app.get('/api/parametrage', async (req, res) => {
 app.put('/api/parametrage/:cle', async (req, res) => {
   try {
     const { cle } = req.params;
-    const { valeur_texte, valeur_nombre, valeur_boolean } = req.body;
+    const { valeur } = req.body;
     
     // Vérifier que le paramètre existe
     const check = await db.query('SELECT * FROM parametrage WHERE cle = $1', [cle]);
@@ -842,10 +842,10 @@ app.put('/api/parametrage/:cle', async (req, res) => {
     // Mettre à jour
     const result = await db.query(
       `UPDATE parametrage 
-       SET valeur_texte = $2, valeur_nombre = $3, valeur_boolean = $4, updated_at = CURRENT_TIMESTAMP
+       SET valeur = $2, updated_at = CURRENT_TIMESTAMP
        WHERE cle = $1
        RETURNING *`,
-      [cle, valeur_texte || null, valeur_nombre || null, valeur_boolean]
+      [cle, valeur]
     );
     
     res.json(result.rows[0]);

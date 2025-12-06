@@ -366,7 +366,7 @@ function afficherPanier() {
 
 async function allerALaCaisse() {
     if (!panier.length) {
-        showError('Votre panier est vide');
+        showError('⚠️ Votre panier est vide ! Veuillez d\'abord sélectionner des articles.');
         return;
     }
     

@@ -40,7 +40,15 @@ function afficherCommandesListe(commandes) {
         return;
     }
     
-    container.innerHTML = commandes.map(commande => `
+    // Filtrer uniquement les commandes avec montant_total > 0
+    const commandesValides = commandes.filter(c => c.montant_total > 0);
+    
+    if (commandesValides.length === 0) {
+        container.innerHTML = '<p class="info">Aucune commande en attente de paiement</p>';
+        return;
+    }
+    
+    container.innerHTML = commandesValides.map(commande => `
         <div class="commande-card">
             <div class="commande-header">
                 <div>
