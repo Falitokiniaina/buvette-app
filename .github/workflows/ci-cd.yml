@@ -37,7 +37,7 @@ jobs:
       - name: Install Backend Dependencies
         run: |
           cd backend
-          npm ci
+          npm install
           
       - name: Setup Database
         run: |
