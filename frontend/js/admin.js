@@ -135,6 +135,11 @@ async function chargerStatistiques() {
         document.getElementById('statsPartielles').textContent = stats.commandes_partielles || 0;
         document.getElementById('statsLivrees').textContent = stats.commandes_livrees || 0;
         document.getElementById('statsCA').textContent = formatPrice(stats.chiffre_affaires_total || 0);
+        
+        // Détails paiements
+        document.getElementById('statsCB').textContent = formatPrice(stats.total_cb || 0);
+        document.getElementById('statsEspeces').textContent = formatPrice(stats.total_especes || 0);
+        document.getElementById('statsCheque').textContent = formatPrice(stats.total_cheque || 0);
     } catch (error) {
         showError('Erreur lors du chargement des statistiques');
     }

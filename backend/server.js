@@ -750,7 +750,10 @@ app.get('/api/stats/overview', async (req, res) => {
         (SELECT COUNT(*) FROM commandes WHERE statut = 'livree_partiellement') as commandes_partielles,
         (SELECT COUNT(*) FROM commandes WHERE statut = 'livree') as commandes_livrees,
         (SELECT COALESCE(SUM(montant_total), 0) FROM commandes WHERE statut IN ('payee', 'livree_partiellement', 'livree')) as chiffre_affaires_total,
-        (SELECT COALESCE(SUM(montant_total), 0) FROM commandes WHERE statut IN ('payee', 'livree_partiellement')) as en_cours_preparation
+        (SELECT COALESCE(SUM(montant_total), 0) FROM commandes WHERE statut IN ('payee', 'livree_partiellement')) as en_cours_preparation,
+        (SELECT COALESCE(SUM(montant_cb), 0) FROM commandes WHERE statut IN ('payee', 'livree_partiellement', 'livree')) as total_cb,
+        (SELECT COALESCE(SUM(montant_especes), 0) FROM commandes WHERE statut IN ('payee', 'livree_partiellement', 'livree')) as total_especes,
+        (SELECT COALESCE(SUM(montant_cheque), 0) FROM commandes WHERE statut IN ('payee', 'livree_partiellement', 'livree')) as total_cheque
     `);
     
     res.json(stats.rows[0]);
@@ -768,6 +771,31 @@ app.get('/api/stats/articles', async (req, res) => {
   } catch (error) {
     console.error('Erreur stats articles:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des statistiques' });
+  }
+});
+
+// GET: Articles à préparer (pour page préparation)
+app.get('/api/stats/articles-a-preparer', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT 
+        a.id,
+        a.nom,
+        COALESCE(SUM(ci.quantite), 0) as quantite_totale,
+        COALESCE(SUM(ci.quantite_livree), 0) as quantite_livree,
+        COALESCE(SUM(ci.quantite - COALESCE(ci.quantite_livree, 0)), 0) as quantite_restante
+      FROM articles a
+      LEFT JOIN commande_items ci ON a.id = ci.article_id
+      LEFT JOIN commandes c ON ci.commande_id = c.id
+      WHERE c.statut IN ('payee', 'livree_partiellement')
+      GROUP BY a.id, a.nom
+      HAVING SUM(ci.quantite - COALESCE(ci.quantite_livree, 0)) > 0
+      ORDER BY a.nom
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Erreur stats articles à préparer:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des articles à préparer' });
   }
 });
 

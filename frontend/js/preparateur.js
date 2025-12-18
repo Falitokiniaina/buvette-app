@@ -502,3 +502,77 @@ async function rechercherHistorique() {
         showError('Erreur lors de la recherche');
     }
 }
+
+// ============================================
+// MODAL DÉTAILS PAR ARTICLE
+// ============================================
+
+async function afficherDetailsArticles() {
+    try {
+        const articles = await apiGet('/stats/articles-a-preparer');
+        
+        const modal = document.getElementById('modalDetailsArticles');
+        const body = document.getElementById('modalDetailsArticlesBody');
+        
+        if (articles.length === 0) {
+            body.innerHTML = `
+                <div class="alert alert-info">
+                    ℹ️ Aucun article à préparer pour le moment
+                </div>
+            `;
+        } else {
+            body.innerHTML = `
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Article</th>
+                                <th style="text-align: center;">Total</th>
+                                <th style="text-align: center;">Livrées</th>
+                                <th style="text-align: center;">À préparer</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${articles.map(article => `
+                                <tr>
+                                    <td><strong>${article.nom}</strong></td>
+                                    <td style="text-align: center;">${article.quantite_totale}</td>
+                                    <td style="text-align: center; color: #10b981;">${article.quantite_livree || 0}</td>
+                                    <td style="text-align: center;">
+                                        <strong style="color: var(--primary); font-size: 1.1rem;">
+                                            ${article.quantite_restante}
+                                        </strong>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                        <tfoot>
+                            <tr style="font-weight: bold; background-color: var(--gray-50);">
+                                <td>TOTAL</td>
+                                <td style="text-align: center;">${articles.reduce((sum, a) => sum + parseInt(a.quantite_totale), 0)}</td>
+                                <td style="text-align: center; color: #10b981;">${articles.reduce((sum, a) => sum + parseInt(a.quantite_livree || 0), 0)}</td>
+                                <td style="text-align: center;">
+                                    <strong style="color: var(--primary); font-size: 1.1rem;">
+                                        ${articles.reduce((sum, a) => sum + parseInt(a.quantite_restante), 0)}
+                                    </strong>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div class="alert alert-info mt-2" style="font-size: 0.9rem;">
+                    💡 <strong>Astuce :</strong> Ces totaux correspondent à l'ensemble des commandes payées non encore livrées.
+                </div>
+            `;
+        }
+        
+        modal.style.display = 'flex';
+    } catch (error) {
+        showError('Erreur lors du chargement des détails par article');
+        console.error('Erreur détails articles:', error);
+    }
+}
+
+function fermerModalDetailsArticles() {
+    document.getElementById('modalDetailsArticles').style.display = 'none';
+}

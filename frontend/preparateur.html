@@ -59,8 +59,11 @@
             <div class="card">
                 <div class="card-header">
                     <h2>🍽️ Commandes payées - À préparer</h2>
-                    <div class="auto-refresh">
-                        <span>⟳ Actualisation auto: <strong id="countdown">10</strong>s</span>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <button onclick="afficherDetailsArticles()" class="btn btn-secondary btn-sm">📊 Détails par article</button>
+                        <div class="auto-refresh">
+                            <span>⟳ Actualisation auto: <strong id="countdown">10</strong>s</span>
+                        </div>
                     </div>
                 </div>
                 <div id="commandesListe" class="commandes-liste"></div>
@@ -79,6 +82,17 @@
                     </div>
                     <div id="historiqueListe"></div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Détails par article à préparer -->
+    <div id="modalDetailsArticles" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <h2>📊 Détails par article à préparer</h2>
+            <div id="modalDetailsArticlesBody" style="max-height: 500px; overflow-y: auto;"></div>
+            <div class="modal-actions">
+                <button onclick="fermerModalDetailsArticles()" class="btn btn-primary">Fermer</button>
             </div>
         </div>
     </div>
