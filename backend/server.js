@@ -782,14 +782,14 @@ app.get('/api/stats/articles-a-preparer', async (req, res) => {
         a.id,
         a.nom,
         COALESCE(SUM(ci.quantite), 0) as quantite_totale,
-        COALESCE(SUM(ci.quantite_livree), 0) as quantite_livree,
-        COALESCE(SUM(ci.quantite - COALESCE(ci.quantite_livree, 0)), 0) as quantite_restante
+        COALESCE(SUM(CASE WHEN ci.est_livre THEN ci.quantite ELSE 0 END), 0) as quantite_livree,
+        COALESCE(SUM(CASE WHEN NOT ci.est_livre THEN ci.quantite ELSE 0 END), 0) as quantite_restante
       FROM articles a
       LEFT JOIN commande_items ci ON a.id = ci.article_id
       LEFT JOIN commandes c ON ci.commande_id = c.id
       WHERE c.statut IN ('payee', 'livree_partiellement')
       GROUP BY a.id, a.nom
-      HAVING SUM(ci.quantite - COALESCE(ci.quantite_livree, 0)) > 0
+      HAVING SUM(CASE WHEN NOT ci.est_livre THEN ci.quantite ELSE 0 END) > 0
       ORDER BY a.nom
     `);
     res.json(result.rows);
