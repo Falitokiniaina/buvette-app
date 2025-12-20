@@ -205,7 +205,9 @@ function passerEtape2() {
 
 async function chargerArticles() {
     try {
-        articles = await apiGet('/articles');
+        const articlesData = await apiGet('/articles');
+        // Filtrer uniquement les articles actifs pour les clients
+        articles = articlesData.filter(a => a.actif === true);
     } catch (error) {
         showError('Erreur lors du chargement des articles');
     }

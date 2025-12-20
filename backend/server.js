@@ -65,6 +65,8 @@ app.get('/api/articles', async (req, res) => {
     await db.query('SELECT nettoyer_reservations_expirees()');
     
     // Utiliser la vue avec stock réel (stock - réservations)
+    // IMPORTANT : Retourner TOUS les articles (actifs + inactifs)
+    // Le filtrage se fait côté client selon les besoins
     const result = await db.query(`
       SELECT 
         id, nom, description, prix,
@@ -72,7 +74,6 @@ app.get('/api/articles', async (req, res) => {
         stock_reel_disponible,
         image_url, actif, created_at, updated_at
       FROM v_stock_disponible
-      WHERE actif = TRUE
       ORDER BY nom ASC
     `);
     
