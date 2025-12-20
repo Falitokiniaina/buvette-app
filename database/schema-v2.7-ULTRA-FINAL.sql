@@ -161,14 +161,14 @@ SELECT
     a.nom,
     a.prix,
     a.stock_disponible,
+    a.actif,
     COALESCE(SUM(ci.quantite), 0)::INTEGER as total_vendu,
     COALESCE(SUM(ci.quantite * ci.prix_unitaire), 0)::DECIMAL(10,2) as chiffre_affaires,
     COUNT(DISTINCT c.id)::INTEGER as nb_commandes
 FROM articles a
 LEFT JOIN commande_items ci ON a.id = ci.article_id
 LEFT JOIN commandes c ON ci.commande_id = c.id AND c.statut IN ('payee', 'livree', 'livree_partiellement')
-WHERE a.actif = TRUE
-GROUP BY a.id, a.nom, a.prix, a.stock_disponible
+GROUP BY a.id, a.nom, a.prix, a.stock_disponible, a.actif
 ORDER BY total_vendu DESC;
 
 -- ============================================
