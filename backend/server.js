@@ -121,7 +121,7 @@ app.put('/api/articles/:id/stock', async (req, res) => {
   const client = await db.pool.connect();
   try {
     const { id } = req.params;
-    const { stock_disponible, commentaire } = req.body;
+    const { stock_disponible, commentaire, actif } = req.body;
     
     await client.query('BEGIN');
     
@@ -134,11 +134,19 @@ app.put('/api/articles/:id/stock', async (req, res) => {
     
     const stock_avant = current.rows[0].stock_disponible;
     
-    // Mettre à jour le stock
-    const result = await client.query(
-      'UPDATE articles SET stock_disponible = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
-      [stock_disponible, id]
-    );
+    // Mettre à jour le stock et actif si fourni
+    let updateQuery = 'UPDATE articles SET stock_disponible = $1, updated_at = CURRENT_TIMESTAMP';
+    let updateParams = [stock_disponible];
+    
+    if (actif !== undefined) {
+      updateQuery += ', actif = $' + (updateParams.length + 1);
+      updateParams.push(actif);
+    }
+    
+    updateQuery += ' WHERE id = $' + (updateParams.length + 1) + ' RETURNING *';
+    updateParams.push(id);
+    
+    const result = await client.query(updateQuery, updateParams);
     
     // Enregistrer dans l'historique
     await client.query(

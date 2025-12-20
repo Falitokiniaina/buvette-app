@@ -3,6 +3,8 @@
 // ============================================
 
 let articleSelectionne = null;
+let afficherTousArticlesStock = false; // Flag pour filtrer articles actifs/tous
+let afficherTousArticlesStats = false; // Flag pour stats articles
 
 // ============================================
 // FONCTIONS HELPER - STATUTS ET BADGES
@@ -170,7 +172,7 @@ async function chargerStock() {
         const statsArticles = await apiGet('/stats/articles');
         
         // Fusionner les données
-        const articlesComplets = articles.map(article => {
+        let articlesComplets = articles.map(article => {
             const stats = statsArticles.find(s => s.id === article.id);
             return {
                 ...article,
@@ -178,6 +180,11 @@ async function chargerStock() {
                 chiffre_affaires: stats?.chiffre_affaires || 0
             };
         });
+        
+        // Filtrer selon le flag afficherTousArticlesStock
+        if (!afficherTousArticlesStock) {
+            articlesComplets = articlesComplets.filter(a => a.actif === true);
+        }
         
         afficherTableStock(articlesComplets);
     } catch (error) {
@@ -189,20 +196,24 @@ function afficherTableStock(articles) {
     const tbody = document.getElementById('stockTable');
     
     if (!articles || articles.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Aucun article</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">Aucun article</td></tr>';
         return;
     }
     
     tbody.innerHTML = articles.map(article => {
         const stockClass = article.stock_disponible < 10 ? 'style="color: var(--danger); font-weight: bold;"' : '';
+        const actifBadge = article.actif 
+            ? '<span class="badge badge-success">✓ Actif</span>' 
+            : '<span class="badge badge-danger">✗ Inactif</span>';
         
         return `
-            <tr>
+            <tr ${!article.actif ? 'style="opacity: 0.6;"' : ''}>
                 <td><strong>${article.nom}</strong></td>
                 <td>${formatPrice(article.prix)}</td>
                 <td ${stockClass}>${article.stock_disponible}</td>
                 <td>${article.total_vendu}</td>
                 <td>${formatPrice(article.chiffre_affaires)}</td>
+                <td>${actifBadge}</td>
                 <td>
                     <button onclick="ouvrirModifStock(${article.id})" class="btn btn-primary btn-sm">
                         ✏️ Modifier
@@ -225,6 +236,7 @@ async function ouvrirModifStock(articleId) {
         document.getElementById('articleNom').textContent = article.nom;
         document.getElementById('stockActuel').textContent = article.stock_disponible;
         document.getElementById('nouveauStock').value = article.stock_disponible;
+        document.getElementById('articleActif').checked = article.actif;
         document.getElementById('commentaire').value = '';
         
         openModal('modalStock');
@@ -237,6 +249,7 @@ async function confirmerModifStock() {
     if (!articleSelectionne) return;
     
     const nouveauStock = parseInt(document.getElementById('nouveauStock').value);
+    const actif = document.getElementById('articleActif').checked;
     const commentaire = document.getElementById('commentaire').value.trim();
     
     if (isNaN(nouveauStock) || nouveauStock < 0) {
@@ -247,6 +260,7 @@ async function confirmerModifStock() {
     try {
         await apiPut(`/articles/${articleSelectionne.id}/stock`, {
             stock_disponible: nouveauStock,
+            actif: actif,
             commentaire: commentaire || 'Modification manuelle'
         });
         
@@ -275,7 +289,13 @@ function fermerModal() {
 
 async function chargerStatsArticles() {
     try {
-        const stats = await apiGet('/stats/articles');
+        let stats = await apiGet('/stats/articles');
+        
+        // Filtrer selon le flag afficherTousArticlesStats
+        if (!afficherTousArticlesStats) {
+            stats = stats.filter(a => a.actif === true);
+        }
+        
         afficherStatsArticles(stats);
     } catch (error) {
         console.error('Erreur stats articles:', error);
@@ -301,10 +321,12 @@ function afficherStatsArticles(stats) {
         <div class="stats-grid">
             ${stats.map(article => {
                 const pourcentage = totalVendu > 0 ? (article.total_vendu / totalVendu * 100).toFixed(1) : 0;
+                const inactifClass = !article.actif ? 'style="opacity: 0.6; border: 2px dashed #ccc;"' : '';
+                const inactifBadge = !article.actif ? '<span class="badge badge-danger">Inactif</span>' : '';
                 
                 return `
-                    <div class="stat-card">
-                        <h4>${article.nom}</h4>
+                    <div class="stat-card" ${inactifClass}>
+                        <h4>${article.nom} ${inactifBadge}</h4>
                         <div class="stat-value">${article.total_vendu}</div>
                         <div class="stat-label">unités vendues (${pourcentage}%)</div>
                         <p class="mt-1"><strong>CA: ${formatPrice(article.chiffre_affaires)}</strong></p>
@@ -354,6 +376,36 @@ function afficherHistorique(commandes) {
             <td>${commande.date_livraison ? formatDate(commande.date_livraison) : '-'}</td>
         </tr>
     `).join('');
+}
+
+// ============================================
+// TOGGLE AFFICHAGE ARTICLES ACTIFS/TOUS
+// ============================================
+
+function toggleAffichageStock() {
+    afficherTousArticlesStock = !afficherTousArticlesStock;
+    
+    const btn = document.getElementById('btnToggleStock');
+    if (afficherTousArticlesStock) {
+        btn.innerHTML = '👁️‍🗨️ Masquer articles désactivés';
+    } else {
+        btn.innerHTML = '👁️ Afficher tous les articles';
+    }
+    
+    chargerStock();
+}
+
+function toggleAffichageStatsArticles() {
+    afficherTousArticlesStats = !afficherTousArticlesStats;
+    
+    const btn = document.getElementById('btnToggleStatsArticles');
+    if (afficherTousArticlesStats) {
+        btn.innerHTML = '👁️‍🗨️ Masquer articles désactivés';
+    } else {
+        btn.innerHTML = '👁️ Afficher tous les articles';
+    }
+    
+    chargerStatsArticles();
 }
 
 // ============================================

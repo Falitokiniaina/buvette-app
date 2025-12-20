@@ -94,7 +94,12 @@
             <div class="card">
                 <div class="card-header">
                     <h2>📦 Gestion du stock</h2>
-                    <button onclick="chargerStock()" class="btn btn-secondary btn-sm">🔄 Actualiser</button>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button onclick="toggleAffichageStock()" class="btn btn-secondary btn-sm" id="btnToggleStock">
+                            👁️ Afficher tous les articles
+                        </button>
+                        <button onclick="chargerStock()" class="btn btn-secondary btn-sm">🔄 Actualiser</button>
+                    </div>
                 </div>
                 <div class="table-responsive">
                     <table class="data-table">
@@ -105,6 +110,7 @@
                                 <th>Stock actuel</th>
                                 <th>Vendus</th>
                                 <th>CA</th>
+                                <th>Actif</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -115,7 +121,12 @@
 
             <!-- Statistiques par article -->
             <div class="card">
-                <h2>📈 Statistiques de vente par article</h2>
+                <div class="card-header">
+                    <h2>📈 Statistiques de vente par article</h2>
+                    <button onclick="toggleAffichageStatsArticles()" class="btn btn-secondary btn-sm" id="btnToggleStatsArticles">
+                        👁️ Afficher tous les articles
+                    </button>
+                </div>
                 <div id="statsArticles" class="stats-articles"></div>
             </div>
 
@@ -158,6 +169,12 @@
                 <div class="form-group">
                     <label for="nouveauStock">Nouveau stock:</label>
                     <input type="number" id="nouveauStock" min="0" class="input-large">
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="articleActif" style="margin-right: 10px;">
+                        <span>Article actif (visible aux clients)</span>
+                    </label>
                 </div>
                 <div class="form-group">
                     <label for="commentaire">Commentaire (optionnel):</label>
