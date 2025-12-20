@@ -10,7 +10,10 @@ let countdown = 10;
 // INITIALISATION
 // ============================================
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Charger le titre de la page
+    await chargerTitrePage();
+    
     chargerCommandesPayees();
     chargerStatistiques();
     demarrerActualisationAuto();
@@ -22,6 +25,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+// Charger le titre de la page depuis les paramètres
+async function chargerTitrePage() {
+    try {
+        const response = await apiGet('/parametrage/titre_page_preparateur');
+        if (response && response.valeur) {
+            document.getElementById('titrePage').textContent = '👨‍🍳 ' + response.valeur;
+        }
+    } catch (error) {
+        console.log('Utilisation du titre par défaut');
+    }
+}
 
 // ============================================
 // ACTUALISATION AUTOMATIQUE

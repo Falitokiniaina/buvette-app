@@ -34,13 +34,28 @@ function getBadgeClass(statut) {
 // INITIALISATION
 // ============================================
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Charger le titre de la page
+    await chargerTitrePage();
+    
     chargerStatutVente();
     chargerStatistiques();
     chargerStock();
     chargerStatsArticles();
     chargerHistorique();
 });
+
+// Charger le titre de la page depuis les paramètres
+async function chargerTitrePage() {
+    try {
+        const response = await apiGet('/parametrage/titre_page_admin');
+        if (response && response.valeur) {
+            document.getElementById('titrePage').textContent = '⚙️ ' + response.valeur;
+        }
+    } catch (error) {
+        console.log('Utilisation du titre par défaut');
+    }
+}
 
 // ============================================
 // GESTION DE LA VENTE (OUVERTURE/FERMETURE)

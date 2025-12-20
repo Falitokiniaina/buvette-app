@@ -12,6 +12,9 @@ let intervalPaiement = null;
 // ============================================
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Charger le titre de la page
+    await chargerTitrePage();
+    
     // Vérifier si la vente est ouverte
     const venteOuverte = await verifierVenteOuverte();
     if (!venteOuverte) {
@@ -21,6 +24,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     await chargerArticles();
 });
+
+// Charger le titre de la page depuis les paramètres
+async function chargerTitrePage() {
+    try {
+        const response = await apiGet('/parametrage/titre_page_client');
+        if (response && response.valeur) {
+            document.getElementById('titrePage').textContent = '🎵 ' + response.valeur;
+        }
+    } catch (error) {
+        console.log('Utilisation du titre par défaut');
+    }
+}
 
 // Vérifier si la vente est ouverte
 async function verifierVenteOuverte() {
